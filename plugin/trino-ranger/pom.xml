@@ -51,7 +51,7 @@
         <opentelemetry.version>1.37.0</opentelemetry.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <ranger.version>2.5.0</ranger.version>
-        <slf4j-api.version>2.0.13</slf4j-api.version>
+        <slf4j-api.version>2.0.15</slf4j-api.version>
         <zookeeper.version>3.5.5</zookeeper.version>
     </properties>
 
