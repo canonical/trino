@@ -28,22 +28,6 @@ ranger.plugin.config.resource=/etc/trino/ranger-trino-security.xml,/etc/trino/ra
 # List of Hadoop configuration files, comma separated
 # Default: trino-ranger-site.xml in classpath
 ranger.hadoop.config.resource=trino-ranger-site.xml
-
-# used in Hadoop environments using Kerberos authentication
-# path to keytab file for the Trino service principal
-# Default: empty
-ranger.keytab=
-
-# used in Hadoop environments using Kerberos authentication
-# the name of the Kerberos principal of the Trino service principal
-# Default: empty
-ranger.principal=
-
-# used in Hadoop environments using Kerberos authentication
-#   true:  use Hadoop's UserGroupInformation class to obtain groups; typically used in environments using Kerberos
-#   false: use Trino's Identity class to obtain groups
-# Default: false
-ranger.use.ugi=false
 ```
 
 ### ranger-trino-security.xml

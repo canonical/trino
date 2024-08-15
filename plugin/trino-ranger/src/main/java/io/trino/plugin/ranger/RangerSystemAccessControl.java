@@ -51,7 +51,6 @@ import org.apache.ranger.plugin.service.RangerBasePlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.URL;
 import java.security.Principal;
 import java.time.Instant;
@@ -113,6 +112,7 @@ public class RangerSystemAccessControl
 
         UserGroupInformation.setConfiguration(hadoopConf);
 
+        /*
         if (config.getKeytab() != null && config.getPrincipal() != null) {
             String keytab = config.getKeytab();
             String principal = config.getPrincipal();
@@ -130,6 +130,8 @@ public class RangerSystemAccessControl
         }
 
         useUgi = config.isUseUgi();
+         */
+        useUgi = false;
 
         RangerPluginConfig pluginConfig = new RangerPluginConfig(RANGER_TRINO_SERVICETYPE, config.getServiceName(), RANGER_TRINO_APPID, null, null, null);
 

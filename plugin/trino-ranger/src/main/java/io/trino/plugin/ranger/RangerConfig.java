@@ -67,6 +67,7 @@ public class RangerConfig
         return hadoopConfigResource;
     }
 
+    /*
     public String getKeytab()
     {
         return keytab;
@@ -108,4 +109,5 @@ public class RangerConfig
         this.useUgi = useUgi;
         return this;
     }
+     */
 }
