@@ -98,22 +98,15 @@ public class RangerSystemAccessControl
 
         Configuration hadoopConf = new Configuration();
 
-        if (config.getHadoopConfigPath() != null) {
-            URL url = hadoopConf.getResource(config.getHadoopConfigPath());
-
-            if (url == null) {
-                LOG.warn("Hadoop config {} not found", config.getHadoopConfigPath());
-            }
-            else {
-                hadoopConf.addResource(url);
-            }
-        }
-        else {
-            URL url = hadoopConf.getResource(RANGER_TRINO_DEFAULT_HADOOP_CONF);
+        for (String configPath : config.getHadoopConfigResource()) {
+            URL url = hadoopConf.getResource(configPath);
 
             LOG.info("Trying to load Hadoop config from {} (can be null)", url);
 
-            if (url != null) {
+            if (url == null) {
+                LOG.warn("Hadoop config {} not found", configPath);
+            }
+            else {
                 hadoopConf.addResource(url);
             }
         }
@@ -140,18 +133,13 @@ public class RangerSystemAccessControl
 
         RangerPluginConfig pluginConfig = new RangerPluginConfig(RANGER_TRINO_SERVICETYPE, config.getServiceName(), RANGER_TRINO_APPID, null, null, null);
 
-        pluginConfig.addResourceIfReadable(config.getAuditConfigPath());
-        pluginConfig.addResourceIfReadable(config.getSecurityConfigPath());
-        pluginConfig.addResourceIfReadable(config.getPolicyMgrSslConfigPath());
+        for (String configPath : config.getPluginConfigResource()) {
+            pluginConfig.addResourceIfReadable(configPath);
+        }
 
         rangerPlugin = new RangerBasePlugin(pluginConfig);
 
-        try {
-            rangerPlugin.init();
-        }
-        catch (Throwable t) {
-            LOG.error("Ranger authorizer initialization failed", t); // ERROR
-        }
+        rangerPlugin.init();
 
         rangerPlugin.setResultProcessor(new RangerDefaultAuditHandler());
     }
@@ -1319,54 +1307,18 @@ public class RangerSystemAccessControl
             config.setServiceName(RANGER_TRINO_DEFAULT_SERVICE_NAME);
         }
 
-        if (StringUtils.isBlank(config.getSecurityConfigPath())) {
-            config.setSecurityConfigPath(RANGER_TRINO_DEFAULT_SECURITY_CONF);
+        if (config.getPluginConfigResource() == null || config.getPluginConfigResource().isEmpty()) {
+            config.setPluginConfigResource(Arrays.asList(RANGER_TRINO_DEFAULT_SECURITY_CONF, RANGER_TRINO_DEFAULT_AUDIT_CONF, RANGER_TRINO_DEFAULT_POLICYMGR_SSL_CONF));
         }
 
-        if (StringUtils.isBlank(config.getAuditConfigPath())) {
-            config.setAuditConfigPath(RANGER_TRINO_DEFAULT_AUDIT_CONF);
-        }
-
-        if (StringUtils.isBlank(config.getPolicyMgrSslConfigPath())) {
-            config.setPolicyMgrSslConfigPath(RANGER_TRINO_DEFAULT_POLICYMGR_SSL_CONF);
+        if (config.getHadoopConfigResource() == null || config.getHadoopConfigResource().isEmpty()) {
+            config.setHadoopConfigResource(Arrays.asList(RANGER_TRINO_DEFAULT_HADOOP_CONF));
         }
     }
 
     private static Identity toIdentity(Optional<Principal> principal)
     {
         return principal.isPresent() ? Identity.ofUser(principal.get().getName()) : Identity.ofUser("");
-    }
-
-    /*
-     * Classes in following libraries are used by dependent libraries, hence need to be
-     * packaged even though these classes are not directly referenced in the plugin sources.
-     * Hence the references below to avoid following build errors:
-    [ERROR] Unused declared dependencies found:
-    [ERROR]    com.sun.jersey:jersey-client:jar:1.19.3:compile
-    [ERROR]    com.sun.jersey:jersey-bundle:jar:1.19.3:compile
-    [ERROR]    commons-collections:commons-collections:jar:3.2.2:compile
-    [ERROR]    org.apache.ranger:ranger-plugins-audit:jar:2.4.0:compile
-     */
-    private static void referDependentClasses()
-    {
-        Class<?>[] ignored = {
-                org.apache.commons.collections.CollectionUtils.class,
-                org.apache.hadoop.thirdparty.com.google.common.collect.Lists.class,
-                org.apache.http.Header.class,
-                org.apache.http.client.HttpClient.class,
-                org.apache.ranger.audit.provider.AuditProviderFactory.class,
-                org.apache.zookeeper.common.ZKConfig.class,
-                org.opensearch.client.Response.class,
-                com.amazonaws.services.logs.AWSLogs.class,
-                com.google.gson.GsonBuilder.class,
-                com.oracle.js.parser.Scanner.class,
-                com.oracle.svm.core.annotate.Alias.class,
-                com.oracle.truffle.js.scriptengine.GraalJSScriptEngine.class,
-                com.oracle.truffle.tools.chromeinspector.util.LineSearch.class,
-                com.oracle.truffle.tools.profiler.CPUTracer.class,
-                com.sun.jersey.client.proxy.ViewProxyProvider.class,
-                com.sun.jersey.core.impl.provider.entity.ByteArrayProvider.class
-        };
     }
 
     private static class RangerTrinoEventListener

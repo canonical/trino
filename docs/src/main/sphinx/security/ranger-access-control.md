@@ -18,40 +18,32 @@ access-control.name=ranger
 
 # name of the service having policies to be enforced by the plugin
 # Default: dev_trino
-ranger.service_name=dev_trino
+ranger.service.name=dev_trino
+
+# List of Ranger plugin configuration files, comma separated
+# Default: ranger-trino-security.xml,ranger-trino-audit.xml,ranger-policymgr-ssl.xml in classpath
+ranger.plugin.config.resource=/etc/trino/ranger-trino-security.xml,/etc/trino/ranger-trino-audit.xml,/etc/trino/ranger-policymgr-ssl.xml
 
 # used in Hadoop environments
-# Path to hadoop configuration
+# List of Hadoop configuration files, comma separated
 # Default: trino-ranger-site.xml in classpath
-ranger.hadoop_config=trino-ranger-site.xml
+ranger.hadoop.config.resource=trino-ranger-site.xml
+
+# used in Hadoop environments using Kerberos authentication
+# path to keytab file for the Trino service principal
+# Default: empty
+ranger.keytab=
+
+# used in Hadoop environments using Kerberos authentication
+# the name of the Kerberos principal of the Trino service principal
+# Default: empty
+ranger.principal=
 
 # used in Hadoop environments using Kerberos authentication
 #   true:  use Hadoop's UserGroupInformation class to obtain groups; typically used in environments using Kerberos
 #   false: use Trino's Identity class to obtain groups
 # Default: false
-ranger.use_ugi=false
-
-# used in Hadoop environments using Kerberos authentication
-# path to keytab file
-# Default: empty
-ranger.keytab=
-
-# used in Hadoop environments using Kerberos authentication
-# the name of the Kerberos principal
-# Default: empty
-ranger.principal=
-
-# configurations to connect to Apache Ranger deployment
-# Default: ranger-trino-security.xml in classpath
-ranger.security_config=/etc/trino/ranger-trino-security.xml
-
-# configurations to connect to audit stores
-# Default: ranger-trino-audit.xml in classpath
-ranger.audit_config=/etc/trino/ranger-trino-audit.xml
-
-# configurations to connect to SSL endpoint
-# Default: ranger-policymgr-ssl.xml in classpath
-ranger.policy_mgr_ssl_config=/etc/trino/ranger-policymgr-ssl.xml
+ranger.use.ugi=false
 ```
 
 ### ranger-trino-security.xml

@@ -16,16 +16,56 @@ package io.trino.plugin.ranger;
 import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigDescription;
 
+import java.util.List;
+
 public class RangerConfig
 {
+    private String serviceName;
+    private List<String> pluginConfigResource;
+    private List<String> hadoopConfigResource;
     private String keytab;
     private String principal;
     private boolean useUgi;
-    private String hadoopConfigPath;
-    private String serviceName;
-    private String securityConfigPath;
-    private String auditConfigPath;
-    private String policyMgrSslConfigPath;
+
+    public String getServiceName()
+    {
+        return serviceName;
+    }
+
+    @Config("ranger.service.name")
+    @ConfigDescription("Name of Ranger service containing policies to enforce. Defaults to dev_trino")
+    public RangerConfig setServiceName(String serviceName)
+    {
+        this.serviceName = serviceName;
+        return this;
+    }
+
+    public List<String> getPluginConfigResource()
+    {
+        return pluginConfigResource;
+    }
+
+    @Config("ranger.plugin.config.resource")
+    @ConfigDescription("List of paths to Ranger plugin configuration files. Defaults to ranger-trino-security.xml,ranger-trino-audit.xml,ranger-policymgr-ssl.xml in classpath")
+    public RangerConfig setPluginConfigResource(List<String> pluginConfigResource)
+    {
+        this.pluginConfigResource = pluginConfigResource;
+        return this;
+    }
+
+    @Config("ranger.hadoop.config.resource")
+    @ConfigDescription("List of paths to hadoop configuration files. Defaults to trino-ranger-site.xml in classpath")
+    @SuppressWarnings("unused")
+    public RangerConfig setHadoopConfigResource(List<String> hadoopConfigResource)
+    {
+        this.hadoopConfigResource = hadoopConfigResource;
+        return this;
+    }
+
+    public List<String> getHadoopConfigResource()
+    {
+        return hadoopConfigResource;
+    }
 
     public String getKeytab()
     {
@@ -60,78 +100,12 @@ public class RangerConfig
         return useUgi;
     }
 
-    @Config("ranger.use_ugi")
+    @Config("ranger.use.ugi")
     @ConfigDescription("Use Hadoop User Group Information instead of Trino groups")
     @SuppressWarnings("unused")
     public RangerConfig setUseUgi(boolean useUgi)
     {
         this.useUgi = useUgi;
-        return this;
-    }
-
-    @Config("ranger.hadoop_config")
-    @ConfigDescription("Path to hadoop configuration. Defaults to trino-ranger-site.xml in classpath")
-    @SuppressWarnings("unused")
-    public RangerConfig setHadoopConfigPath(String hadoopConfigPath)
-    {
-        this.hadoopConfigPath = hadoopConfigPath;
-        return this;
-    }
-
-    public String getHadoopConfigPath()
-    {
-        return hadoopConfigPath;
-    }
-
-    public String getServiceName()
-    {
-        return serviceName;
-    }
-
-    @Config("ranger.service_name")
-    @ConfigDescription("Name of Ranger service containing policies to enforce. Defaults to dev_trino")
-    public RangerConfig setServiceName(String serviceName)
-    {
-        this.serviceName = serviceName;
-        return this;
-    }
-
-    public String getSecurityConfigPath()
-    {
-        return securityConfigPath;
-    }
-
-    @Config("ranger.security_config")
-    @ConfigDescription("Path to Ranger plugin security configuration. Defaults to ranger-trino-security.xml in classpath")
-    public RangerConfig setSecurityConfigPath(String securityConfigPath)
-    {
-        this.securityConfigPath = securityConfigPath;
-        return this;
-    }
-
-    public String getAuditConfigPath()
-    {
-        return auditConfigPath;
-    }
-
-    @Config("ranger.audit_config")
-    @ConfigDescription("Path to Ranger plugin audit configuration. Defaults to ranger-trino-audit.xml in classpath")
-    public RangerConfig setAuditConfigPath(String auditConfigPath)
-    {
-        this.auditConfigPath = auditConfigPath;
-        return this;
-    }
-
-    public String getPolicyMgrSslConfigPath()
-    {
-        return policyMgrSslConfigPath;
-    }
-
-    @Config("ranger.policy_mgr_ssl_config")
-    @ConfigDescription("Path to Ranger admin ssl configuration. Defaults to ranger-policymgr-ssl.xml in classpath")
-    public RangerConfig setPolicyMgrSslConfigPath(String policyMgrSslConfigPath)
-    {
-        this.policyMgrSslConfigPath = policyMgrSslConfigPath;
         return this;
     }
 }
