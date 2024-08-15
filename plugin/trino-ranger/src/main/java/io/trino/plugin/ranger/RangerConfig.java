@@ -23,9 +23,6 @@ public class RangerConfig
     private String serviceName;
     private List<String> pluginConfigResource;
     private List<String> hadoopConfigResource;
-    private String keytab;
-    private String principal;
-    private boolean useUgi;
 
     public String getServiceName()
     {
@@ -66,48 +63,4 @@ public class RangerConfig
     {
         return hadoopConfigResource;
     }
-
-    /*
-    public String getKeytab()
-    {
-        return keytab;
-    }
-
-    @Config("ranger.keytab")
-    @ConfigDescription("Keytab for authentication against Ranger")
-    @SuppressWarnings("unused")
-    public RangerConfig setKeytab(String keytab)
-    {
-        this.keytab = keytab;
-        return this;
-    }
-
-    public String getPrincipal()
-    {
-        return principal;
-    }
-
-    @Config("ranger.principal")
-    @ConfigDescription("Principal for authentication against Ranger with keytab")
-    @SuppressWarnings("unused")
-    public RangerConfig setPrincipal(String principal)
-    {
-        this.principal = principal;
-        return this;
-    }
-
-    public boolean isUseUgi()
-    {
-        return useUgi;
-    }
-
-    @Config("ranger.use.ugi")
-    @ConfigDescription("Use Hadoop User Group Information instead of Trino groups")
-    @SuppressWarnings("unused")
-    public RangerConfig setUseUgi(boolean useUgi)
-    {
-        this.useUgi = useUgi;
-        return this;
-    }
-     */
 }

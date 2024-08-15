@@ -85,7 +85,6 @@ public class RangerSystemAccessControl
     public static final String RANGER_TRINO_DEFAULT_POLICYMGR_SSL_CONF = "ranger-policymgr-ssl.xml";
 
     private final RangerBasePlugin rangerPlugin;
-    private final boolean useUgi;
     private final RangerTrinoEventListener eventListener = new RangerTrinoEventListener();
 
     @Inject
@@ -111,27 +110,6 @@ public class RangerSystemAccessControl
         }
 
         UserGroupInformation.setConfiguration(hadoopConf);
-
-        /*
-        if (config.getKeytab() != null && config.getPrincipal() != null) {
-            String keytab = config.getKeytab();
-            String principal = config.getPrincipal();
-
-            LOG.info("Performing kerberos login with principal {} and keytab {}", principal, keytab);
-
-            try {
-                UserGroupInformation.loginUserFromKeytab(principal, keytab);
-            }
-            catch (IOException ioe) {
-                LOG.error("Kerberos login failed", ioe); // ERROR
-
-                throw new RuntimeException(ioe);
-            }
-        }
-
-        useUgi = config.isUseUgi();
-         */
-        useUgi = false;
 
         RangerPluginConfig pluginConfig = new RangerPluginConfig(RANGER_TRINO_SERVICETYPE, config.getServiceName(), RANGER_TRINO_APPID, null, null, null);
 
@@ -998,38 +976,14 @@ public class RangerSystemAccessControl
 
     private RangerTrinoAccessRequest createAccessRequest(RangerTrinoResource resource, SystemSecurityContext context, TrinoAccessType accessType, String action)
     {
-        Set<String> userGroups = null;
-
-        if (useUgi) {
-            UserGroupInformation ugi = UserGroupInformation.createRemoteUser(context.getIdentity().getUser());
-            String[] groups = ugi != null ? ugi.getGroupNames() : null;
-
-            if (groups != null && groups.length > 0) {
-                userGroups = new HashSet<>(Arrays.asList(groups));
-            }
-        }
-        else {
-            userGroups = context.getIdentity().getGroups();
-        }
+        Set<String> userGroups = context.getIdentity().getGroups();
 
         return new RangerTrinoAccessRequest(resource, context.getIdentity().getUser(), userGroups, getQueryTime(context), getClientAddress(context), getClientType(context), getQueryText(context), accessType, action);
     }
 
     private RangerTrinoAccessRequest createAccessRequest(RangerTrinoResource resource, Identity identity, QueryId queryId, TrinoAccessType accessType, String action)
     {
-        Set<String> userGroups = null;
-
-        if (useUgi) {
-            UserGroupInformation ugi = UserGroupInformation.createRemoteUser(identity.getUser());
-            String[] groups = ugi != null ? ugi.getGroupNames() : null;
-
-            if (groups != null && groups.length > 0) {
-                userGroups = new HashSet<>(Arrays.asList(groups));
-            }
-        }
-        else {
-            userGroups = identity.getGroups();
-        }
+        Set<String> userGroups = identity.getGroups();
 
         return new RangerTrinoAccessRequest(resource, identity.getUser(), userGroups, getQueryTime(queryId), getClientAddress(queryId), getClientType(queryId), getQueryText(queryId), accessType, action);
     }
