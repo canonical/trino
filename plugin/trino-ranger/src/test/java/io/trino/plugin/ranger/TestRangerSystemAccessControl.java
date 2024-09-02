@@ -53,19 +53,19 @@ public class TestRangerSystemAccessControl
 {
     static RangerSystemAccessControl accessControlManager;
 
-    private static final Identity alice = new Identity.Builder("alice").withPrincipal(new BasicPrincipal("alice")).build();
-    private static final Identity admin = new Identity.Builder("admin").withPrincipal(new BasicPrincipal("admin")).build();
-    private static final Identity kerberosInvalidAlice = Identity.from(alice).withPrincipal(new KerberosPrincipal("mallory/example.com@EXAMPLE.COM")).build();
-    private static final Identity bob = Identity.ofUser("bob");
+    private static final Identity ALICE = new Identity.Builder("alice").withPrincipal(new BasicPrincipal("alice")).build();
+    private static final Identity ADMIN = new Identity.Builder("admin").withPrincipal(new BasicPrincipal("admin")).build();
+    private static final Identity KERBEROS_INVALID_ALICE = Identity.from(ALICE).withPrincipal(new KerberosPrincipal("mallory/example.com@EXAMPLE.COM")).build();
+    private static final Identity BOB = Identity.ofUser("bob");
 
-    private static final Set<String> allCatalogs = ImmutableSet.of("open-to-all", "all-allowed", "alice-catalog");
-    private static final Set<Identity> queryOwners = ImmutableSet.of(Identity.ofUser("bob"), Identity.ofUser("alice"), Identity.ofUser("frank"));
-    private static final String aliceCatalog = "alice-catalog";
-    private static final CatalogSchemaName aliceSchema = new CatalogSchemaName("alice-catalog", "schema");
-    private static final CatalogSchemaTableName aliceTable = new CatalogSchemaTableName("alice-catalog", "schema", "table");
-    private static final CatalogSchemaTableName aliceView = new CatalogSchemaTableName("alice-catalog", "schema", "view");
-    private static final CatalogSchemaRoutineName aliceProcedure = new CatalogSchemaRoutineName("alice-catalog", "schema", "procedure");
-    private static final CatalogSchemaRoutineName aliceFunction = new CatalogSchemaRoutineName("alice-catalog", "schema", "function");
+    private static final Set<String> ALL_CATALOGS = ImmutableSet.of("open-to-all", "all-allowed", "alice-catalog");
+    private static final Set<Identity> QUERY_OWNERS = ImmutableSet.of(Identity.ofUser("bob"), Identity.ofUser("alice"), Identity.ofUser("frank"));
+    private static final String ALICE_CATALOG = "alice-catalog";
+    private static final CatalogSchemaName ALICE_SCHEMA = new CatalogSchemaName(ALICE_CATALOG, "schema");
+    private static final CatalogSchemaTableName ALICE_TABLE = new CatalogSchemaTableName(ALICE_CATALOG, "schema", "table");
+    private static final CatalogSchemaTableName ALICE_VIEW = new CatalogSchemaTableName(ALICE_CATALOG, "schema", "view");
+    private static final CatalogSchemaRoutineName ALICE_PROCEDURE = new CatalogSchemaRoutineName(ALICE_CATALOG, "schema", "procedure");
+    private static final CatalogSchemaRoutineName ALICE_FUNCTION = new CatalogSchemaRoutineName(ALICE_CATALOG, "schema", "function");
 
     @BeforeClass
     public static void setUpBeforeClass()
@@ -78,93 +78,92 @@ public class TestRangerSystemAccessControl
     @SuppressWarnings("PMD")
     public void testCanSetUserOperations()
     {
-        accessControlManager.checkCanSetUser(admin.getPrincipal(), bob.getUser());
-        accessControlManager.checkCanImpersonateUser(admin, bob.getUser());
-        accessControlManager.checkCanViewQueryOwnedBy(admin, bob);
-        accessControlManager.checkCanKillQueryOwnedBy(admin, bob);
-        assertEquals(Collections.emptyList(), accessControlManager.filterViewQueryOwnedBy(alice, queryOwners));
+        accessControlManager.checkCanSetUser(ADMIN.getPrincipal(), BOB.getUser());
+        accessControlManager.checkCanImpersonateUser(ADMIN, BOB.getUser());
+        accessControlManager.checkCanViewQueryOwnedBy(ADMIN, BOB);
+        accessControlManager.checkCanKillQueryOwnedBy(ADMIN, BOB);
+        assertEquals(Collections.emptyList(), accessControlManager.filterViewQueryOwnedBy(ALICE, QUERY_OWNERS));
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetUser(alice.getPrincipal(), bob.getUser()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanImpersonateUser(alice, bob.getUser()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanViewQueryOwnedBy(alice, bob));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanKillQueryOwnedBy(alice, bob));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanImpersonateUser(kerberosInvalidAlice, bob.getUser()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetUser(ALICE.getPrincipal(), BOB.getUser()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanImpersonateUser(ALICE, BOB.getUser()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanViewQueryOwnedBy(ALICE, BOB));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanKillQueryOwnedBy(ALICE, BOB));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanImpersonateUser(KERBEROS_INVALID_ALICE, BOB.getUser()));
     }
 
     @Test
     public void testSystemInformationOperations()
     {
-        accessControlManager.checkCanReadSystemInformation(admin);
-        accessControlManager.checkCanWriteSystemInformation(admin);
+        accessControlManager.checkCanReadSystemInformation(ADMIN);
+        accessControlManager.checkCanWriteSystemInformation(ADMIN);
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanReadSystemInformation(alice));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanWriteSystemInformation(alice));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanReadSystemInformation(ALICE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanWriteSystemInformation(ALICE));
     }
 
     @Test
     public void testSystemSessionPropertyOperations()
     {
-        accessControlManager.checkCanSetSystemSessionProperty(admin, "test-property");
-        accessControlManager.checkCanSetSystemSessionProperty(admin, new QueryId("q1"), "test-property");
+        accessControlManager.checkCanSetSystemSessionProperty(ADMIN, "test-property");
+        accessControlManager.checkCanSetSystemSessionProperty(ADMIN, new QueryId("q1"), "test-property");
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetSystemSessionProperty(alice, "test-property"));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetSystemSessionProperty(alice, new QueryId("q1"), "test-property"));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetSystemSessionProperty(ALICE, "test-property"));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetSystemSessionProperty(ALICE, new QueryId("q1"), "test-property"));
     }
 
     @Test
     public void testQueryOperations()
     {
-        accessControlManager.checkCanExecuteQuery(admin);
-        accessControlManager.checkCanExecuteQuery(admin, new QueryId("1"));
+        accessControlManager.checkCanExecuteQuery(ADMIN, new QueryId("1"));
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanExecuteQuery(alice));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanExecuteQuery(alice, new QueryId("1")));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanExecuteQuery(ALICE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanExecuteQuery(ALICE, new QueryId("1")));
     }
 
     @Test
     public void testCatalogOperations()
     {
-        accessControlManager.canAccessCatalog(context(alice), aliceCatalog);
-        accessControlManager.checkCanCreateCatalog(context(alice), aliceCatalog);
-        accessControlManager.checkCanDropCatalog(context(alice), aliceCatalog);
-        accessControlManager.checkCanSetCatalogSessionProperty(context(alice), aliceCatalog, "property");
-        assertEquals(allCatalogs, accessControlManager.filterCatalogs(context(alice), allCatalogs));
-        assertEquals(ImmutableSet.of("open-to-all", "all-allowed"), accessControlManager.filterCatalogs(context(bob), allCatalogs));
+        accessControlManager.canAccessCatalog(context(ALICE), ALICE_CATALOG);
+        accessControlManager.checkCanCreateCatalog(context(ALICE), ALICE_CATALOG);
+        accessControlManager.checkCanDropCatalog(context(ALICE), ALICE_CATALOG);
+        accessControlManager.checkCanSetCatalogSessionProperty(context(ALICE), ALICE_CATALOG, "property");
+        assertEquals(ALL_CATALOGS, accessControlManager.filterCatalogs(context(ALICE), ALL_CATALOGS));
+        assertEquals(ImmutableSet.of("open-to-all", "all-allowed"), accessControlManager.filterCatalogs(context(BOB), ALL_CATALOGS));
 
-        assertFalse(accessControlManager.canAccessCatalog(context(bob), aliceCatalog));
+        assertFalse(accessControlManager.canAccessCatalog(context(BOB), ALICE_CATALOG));
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateCatalog(context(bob), aliceCatalog));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropCatalog(context(bob), aliceCatalog));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetCatalogSessionProperty(context(bob), aliceCatalog, "property"));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateCatalog(context(BOB), ALICE_CATALOG));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropCatalog(context(BOB), ALICE_CATALOG));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetCatalogSessionProperty(context(BOB), ALICE_CATALOG, "property"));
     }
 
     @Test
     @SuppressWarnings("PMD")
     public void testSchemaOperations()
     {
-        accessControlManager.checkCanCreateSchema(context(alice), aliceSchema, null);
-        accessControlManager.checkCanDropSchema(context(alice), aliceSchema);
-        accessControlManager.checkCanRenameSchema(context(alice), aliceSchema, "new-schema");
-        accessControlManager.checkCanShowSchemas(context(alice), aliceCatalog);
-        accessControlManager.checkCanSetSchemaAuthorization(context(alice), aliceSchema, new TrinoPrincipal(USER, "principal"));
-        accessControlManager.checkCanShowCreateSchema(context(alice), aliceSchema);
-        accessControlManager.checkCanGrantSchemaPrivilege(context(alice), SELECT, aliceSchema, new TrinoPrincipal(USER, "principal"), true);
-        accessControlManager.checkCanDenySchemaPrivilege(context(alice), SELECT, aliceSchema, new TrinoPrincipal(USER, "principal"));
-        accessControlManager.checkCanRevokeSchemaPrivilege(context(alice), SELECT, aliceSchema, new TrinoPrincipal(USER, "principal"), true);
+        accessControlManager.checkCanCreateSchema(context(ALICE), ALICE_SCHEMA, null);
+        accessControlManager.checkCanDropSchema(context(ALICE), ALICE_SCHEMA);
+        accessControlManager.checkCanRenameSchema(context(ALICE), ALICE_SCHEMA, "new-schema");
+        accessControlManager.checkCanShowSchemas(context(ALICE), ALICE_CATALOG);
+        accessControlManager.checkCanSetSchemaAuthorization(context(ALICE), ALICE_SCHEMA, new TrinoPrincipal(USER, "principal"));
+        accessControlManager.checkCanShowCreateSchema(context(ALICE), ALICE_SCHEMA);
+        accessControlManager.checkCanGrantSchemaPrivilege(context(ALICE), SELECT, ALICE_SCHEMA, new TrinoPrincipal(USER, "principal"), true);
+        accessControlManager.checkCanDenySchemaPrivilege(context(ALICE), SELECT, ALICE_SCHEMA, new TrinoPrincipal(USER, "principal"));
+        accessControlManager.checkCanRevokeSchemaPrivilege(context(ALICE), SELECT, ALICE_SCHEMA, new TrinoPrincipal(USER, "principal"), true);
 
         Set<String> aliceSchemas = ImmutableSet.of("schema");
-        assertEquals(aliceSchemas, accessControlManager.filterSchemas(context(alice), aliceCatalog, aliceSchemas));
-        assertEquals(ImmutableSet.of(), accessControlManager.filterSchemas(context(bob), "alice-catalog", aliceSchemas));
+        assertEquals(aliceSchemas, accessControlManager.filterSchemas(context(ALICE), ALICE_CATALOG, aliceSchemas));
+        assertEquals(ImmutableSet.of(), accessControlManager.filterSchemas(context(BOB), "alice-catalog", aliceSchemas));
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateSchema(context(bob), aliceSchema, null));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropSchema(context(bob), aliceSchema));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameSchema(context(bob), aliceSchema, "new-schema"));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowSchemas(context(bob), aliceSchema.getCatalogName()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetSchemaAuthorization(context(bob), aliceSchema, new TrinoPrincipal(USER, "principal")));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowCreateSchema(context(bob), aliceSchema));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantSchemaPrivilege(context(bob), SELECT, aliceSchema, new TrinoPrincipal(USER, "principal"), true));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDenySchemaPrivilege(context(bob), SELECT, aliceSchema, new TrinoPrincipal(USER, "principal")));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeSchemaPrivilege(context(bob), SELECT, aliceSchema, new TrinoPrincipal(USER, "principal"), true));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateSchema(context(BOB), ALICE_SCHEMA, null));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropSchema(context(BOB), ALICE_SCHEMA));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameSchema(context(BOB), ALICE_SCHEMA, "new-schema"));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowSchemas(context(BOB), ALICE_SCHEMA.getCatalogName()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetSchemaAuthorization(context(BOB), ALICE_SCHEMA, new TrinoPrincipal(USER, "principal")));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowCreateSchema(context(BOB), ALICE_SCHEMA));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantSchemaPrivilege(context(BOB), SELECT, ALICE_SCHEMA, new TrinoPrincipal(USER, "principal"), true));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDenySchemaPrivilege(context(BOB), SELECT, ALICE_SCHEMA, new TrinoPrincipal(USER, "principal")));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeSchemaPrivilege(context(BOB), SELECT, ALICE_SCHEMA, new TrinoPrincipal(USER, "principal"), true));
     }
 
     @Test
@@ -173,154 +172,154 @@ public class TestRangerSystemAccessControl
     {
         CatalogSchemaTableName newTableName = new CatalogSchemaTableName("alice-catalog", "schema", "new-table");
 
-        accessControlManager.checkCanCreateTable(context(alice), aliceTable, Map.of());
-        accessControlManager.checkCanDropTable(context(alice), aliceTable);
-        accessControlManager.checkCanRenameTable(context(alice), aliceTable, newTableName);
-        accessControlManager.checkCanSetTableProperties(context(alice), aliceTable, Collections.emptyMap());
-        accessControlManager.checkCanSetTableComment(context(alice), aliceTable);
-        accessControlManager.checkCanSetTableAuthorization(context(alice), aliceTable, new TrinoPrincipal(USER, "principal"));
-        accessControlManager.checkCanShowTables(context(alice), aliceSchema);
-        accessControlManager.checkCanShowCreateTable(context(alice), aliceTable);
-        accessControlManager.checkCanInsertIntoTable(context(alice), aliceTable);
-        accessControlManager.checkCanDeleteFromTable(context(alice), aliceTable);
-        accessControlManager.checkCanTruncateTable(context(alice), aliceTable);
-        accessControlManager.checkCanGrantTablePrivilege(context(alice), SELECT, aliceTable, new TrinoPrincipal(USER, "grantee"), true);
-        accessControlManager.checkCanDenyTablePrivilege(context(alice), SELECT, aliceTable, new TrinoPrincipal(USER, "grantee"));
-        accessControlManager.checkCanRevokeTablePrivilege(context(alice), SELECT, aliceTable, new TrinoPrincipal(USER, "revokee"), true);
+        accessControlManager.checkCanCreateTable(context(ALICE), ALICE_TABLE, Map.of());
+        accessControlManager.checkCanDropTable(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanRenameTable(context(ALICE), ALICE_TABLE, newTableName);
+        accessControlManager.checkCanSetTableProperties(context(ALICE), ALICE_TABLE, Collections.emptyMap());
+        accessControlManager.checkCanSetTableComment(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanSetTableAuthorization(context(ALICE), ALICE_TABLE, new TrinoPrincipal(USER, "principal"));
+        accessControlManager.checkCanShowTables(context(ALICE), ALICE_SCHEMA);
+        accessControlManager.checkCanShowCreateTable(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanInsertIntoTable(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanDeleteFromTable(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanTruncateTable(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanGrantTablePrivilege(context(ALICE), SELECT, ALICE_TABLE, new TrinoPrincipal(USER, "grantee"), true);
+        accessControlManager.checkCanDenyTablePrivilege(context(ALICE), SELECT, ALICE_TABLE, new TrinoPrincipal(USER, "grantee"));
+        accessControlManager.checkCanRevokeTablePrivilege(context(ALICE), SELECT, ALICE_TABLE, new TrinoPrincipal(USER, "revokee"), true);
 
         Set<SchemaTableName> aliceTables = ImmutableSet.of(new SchemaTableName("schema", "table"));
-        assertEquals(aliceTables, accessControlManager.filterTables(context(alice), aliceCatalog, aliceTables));
-        assertEquals(ImmutableSet.of(), accessControlManager.filterTables(context(bob), "alice-catalog", aliceTables));
+        assertEquals(aliceTables, accessControlManager.filterTables(context(ALICE), ALICE_CATALOG, aliceTables));
+        assertEquals(ImmutableSet.of(), accessControlManager.filterTables(context(BOB), "alice-catalog", aliceTables));
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateTable(context(bob), aliceTable, Map.of()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropTable(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameTable(context(bob), aliceTable, newTableName));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetTableProperties(context(bob), aliceTable, Collections.emptyMap()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetTableComment(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetTableAuthorization(context(bob), aliceTable, new TrinoPrincipal(USER, "principal")));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowTables(context(bob), aliceSchema));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowCreateTable(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanInsertIntoTable(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDeleteFromTable(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanTruncateTable(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantTablePrivilege(context(bob), SELECT, aliceTable, new TrinoPrincipal(USER, "grantee"), true));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDenyTablePrivilege(context(bob), SELECT, aliceTable, new TrinoPrincipal(USER, "grantee")));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeTablePrivilege(context(bob), SELECT, aliceTable, new TrinoPrincipal(USER, "revokee"), true));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateTable(context(BOB), ALICE_TABLE, Map.of()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropTable(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameTable(context(BOB), ALICE_TABLE, newTableName));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetTableProperties(context(BOB), ALICE_TABLE, Collections.emptyMap()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetTableComment(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetTableAuthorization(context(BOB), ALICE_TABLE, new TrinoPrincipal(USER, "principal")));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowTables(context(BOB), ALICE_SCHEMA));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowCreateTable(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanInsertIntoTable(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDeleteFromTable(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanTruncateTable(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantTablePrivilege(context(BOB), SELECT, ALICE_TABLE, new TrinoPrincipal(USER, "grantee"), true));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDenyTablePrivilege(context(BOB), SELECT, ALICE_TABLE, new TrinoPrincipal(USER, "grantee")));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeTablePrivilege(context(BOB), SELECT, ALICE_TABLE, new TrinoPrincipal(USER, "revokee"), true));
     }
 
     @Test
     public void testColumnOperations()
     {
-        accessControlManager.checkCanAddColumn(context(alice), aliceTable);
-        accessControlManager.checkCanAlterColumn(context(alice), aliceTable);
-        accessControlManager.checkCanDropColumn(context(alice), aliceTable);
-        accessControlManager.checkCanRenameColumn(context(alice), aliceTable);
-        accessControlManager.checkCanSetColumnComment(context(alice), aliceTable);
-        accessControlManager.checkCanShowColumns(context(alice), aliceTable);
-        accessControlManager.checkCanSelectFromColumns(context(alice), aliceTable, ImmutableSet.of());
-        accessControlManager.checkCanUpdateTableColumns(context(alice), aliceTable, Collections.emptySet());
+        accessControlManager.checkCanAddColumn(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanAlterColumn(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanDropColumn(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanRenameColumn(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanSetColumnComment(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanShowColumns(context(ALICE), ALICE_TABLE);
+        accessControlManager.checkCanSelectFromColumns(context(ALICE), ALICE_TABLE, ImmutableSet.of());
+        accessControlManager.checkCanUpdateTableColumns(context(ALICE), ALICE_TABLE, Collections.emptySet());
 
         Set<String> columns = Collections.singleton("column-1");
-        Map<SchemaTableName, Set<String>> tableColumns = Collections.singletonMap(aliceTable.getSchemaTableName(), columns);
+        Map<SchemaTableName, Set<String>> tableColumns = Collections.singletonMap(ALICE_TABLE.getSchemaTableName(), columns);
 
-        assertEquals(columns, accessControlManager.filterColumns(context(alice), aliceTable, columns));
-        assertEquals(tableColumns, accessControlManager.filterColumns(context(alice), aliceTable.getCatalogName(), tableColumns));
-        assertEquals(Collections.emptySet(), accessControlManager.filterColumns(context(bob), aliceTable, columns));
-        assertEquals(Collections.singletonMap(aliceTable.getSchemaTableName(), Collections.emptySet()), accessControlManager.filterColumns(context(bob), aliceTable.getCatalogName(), tableColumns));
+        assertEquals(columns, accessControlManager.filterColumns(context(ALICE), ALICE_TABLE, columns));
+        assertEquals(tableColumns, accessControlManager.filterColumns(context(ALICE), ALICE_TABLE.getCatalogName(), tableColumns));
+        assertEquals(Collections.emptySet(), accessControlManager.filterColumns(context(BOB), ALICE_TABLE, columns));
+        assertEquals(Collections.singletonMap(ALICE_TABLE.getSchemaTableName(), Collections.emptySet()), accessControlManager.filterColumns(context(BOB), ALICE_TABLE.getCatalogName(), tableColumns));
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanAddColumn(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanAlterColumn(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropColumn(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameColumn(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetColumnComment(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowColumns(context(bob), aliceTable));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSelectFromColumns(context(bob), aliceTable, ImmutableSet.of()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanUpdateTableColumns(context(bob), aliceTable, Collections.emptySet()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanAddColumn(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanAlterColumn(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropColumn(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameColumn(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetColumnComment(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowColumns(context(BOB), ALICE_TABLE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSelectFromColumns(context(BOB), ALICE_TABLE, ImmutableSet.of()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanUpdateTableColumns(context(BOB), ALICE_TABLE, Collections.emptySet()));
     }
 
     @Test
     @SuppressWarnings("PMD")
     public void testViewOperations()
     {
-        CatalogSchemaTableName newViewName = new CatalogSchemaTableName(aliceView.getCatalogName(), aliceView.getSchemaTableName().getSchemaName(), "new-view");
+        CatalogSchemaTableName newViewName = new CatalogSchemaTableName(ALICE_VIEW.getCatalogName(), ALICE_VIEW.getSchemaTableName().getSchemaName(), "new-view");
 
-        accessControlManager.checkCanCreateView(context(alice), aliceView);
-        accessControlManager.checkCanDropView(context(alice), aliceView);
-        accessControlManager.checkCanRenameView(context(alice), aliceView, newViewName);
-        accessControlManager.checkCanSetViewAuthorization(context(alice), aliceView, new TrinoPrincipal(USER, "user"));
-        accessControlManager.checkCanCreateViewWithSelectFromColumns(context(alice), aliceTable, ImmutableSet.of());
-        accessControlManager.checkCanSetViewAuthorization(context(alice), aliceView, new TrinoPrincipal(USER, "user"));
-        accessControlManager.checkCanSetViewComment(context(alice), aliceView);
+        accessControlManager.checkCanCreateView(context(ALICE), ALICE_VIEW);
+        accessControlManager.checkCanDropView(context(ALICE), ALICE_VIEW);
+        accessControlManager.checkCanRenameView(context(ALICE), ALICE_VIEW, newViewName);
+        accessControlManager.checkCanSetViewAuthorization(context(ALICE), ALICE_VIEW, new TrinoPrincipal(USER, "user"));
+        accessControlManager.checkCanCreateViewWithSelectFromColumns(context(ALICE), ALICE_TABLE, ImmutableSet.of());
+        accessControlManager.checkCanSetViewAuthorization(context(ALICE), ALICE_VIEW, new TrinoPrincipal(USER, "user"));
+        accessControlManager.checkCanSetViewComment(context(ALICE), ALICE_VIEW);
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateView(context(bob), aliceView));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropView(context(bob), aliceView));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameView(context(bob), aliceView, newViewName));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetViewAuthorization(context(bob), aliceView, new TrinoPrincipal(USER, "user")));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateViewWithSelectFromColumns(context(bob), aliceTable, ImmutableSet.of()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetViewAuthorization(context(bob), aliceView, new TrinoPrincipal(USER, "user")));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetViewComment(context(bob), aliceView));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateView(context(BOB), ALICE_VIEW));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropView(context(BOB), ALICE_VIEW));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameView(context(BOB), ALICE_VIEW, newViewName));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetViewAuthorization(context(BOB), ALICE_VIEW, new TrinoPrincipal(USER, "user")));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateViewWithSelectFromColumns(context(BOB), ALICE_TABLE, ImmutableSet.of()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetViewAuthorization(context(BOB), ALICE_VIEW, new TrinoPrincipal(USER, "user")));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetViewComment(context(BOB), ALICE_VIEW));
     }
 
     @Test
     @SuppressWarnings("PMD")
     public void testMaterializedViewOperations()
     {
-        CatalogSchemaTableName newViewName = new CatalogSchemaTableName(aliceView.getCatalogName(), aliceView.getSchemaTableName().getSchemaName(), "new-view");
+        CatalogSchemaTableName newViewName = new CatalogSchemaTableName(ALICE_VIEW.getCatalogName(), ALICE_VIEW.getSchemaTableName().getSchemaName(), "new-view");
 
-        accessControlManager.checkCanCreateMaterializedView(context(alice), aliceView, Collections.emptyMap());
-        accessControlManager.checkCanRefreshMaterializedView(context(alice), aliceView);
-        accessControlManager.checkCanSetMaterializedViewProperties(context(alice), aliceView, Collections.emptyMap());
-        accessControlManager.checkCanDropMaterializedView(context(alice), aliceView);
-        accessControlManager.checkCanRenameMaterializedView(context(alice), aliceView, newViewName);
+        accessControlManager.checkCanCreateMaterializedView(context(ALICE), ALICE_VIEW, Collections.emptyMap());
+        accessControlManager.checkCanRefreshMaterializedView(context(ALICE), ALICE_VIEW);
+        accessControlManager.checkCanSetMaterializedViewProperties(context(ALICE), ALICE_VIEW, Collections.emptyMap());
+        accessControlManager.checkCanDropMaterializedView(context(ALICE), ALICE_VIEW);
+        accessControlManager.checkCanRenameMaterializedView(context(ALICE), ALICE_VIEW, newViewName);
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateMaterializedView(context(bob), aliceView, Collections.emptyMap()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRefreshMaterializedView(context(bob), aliceView));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetMaterializedViewProperties(context(bob), aliceView, Collections.emptyMap()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropMaterializedView(context(bob), aliceView));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameMaterializedView(context(bob), aliceView, newViewName));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateMaterializedView(context(BOB), ALICE_VIEW, Collections.emptyMap()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRefreshMaterializedView(context(BOB), ALICE_VIEW));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanSetMaterializedViewProperties(context(BOB), ALICE_VIEW, Collections.emptyMap()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropMaterializedView(context(BOB), ALICE_VIEW));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRenameMaterializedView(context(BOB), ALICE_VIEW, newViewName));
     }
 
     @Test
     public void testRoleOperations()
     {
-        accessControlManager.checkCanCreateRole(context(admin), "role-1", Optional.of(new TrinoPrincipal(USER, "principal")));
-        accessControlManager.checkCanDropRole(context(admin), "role-1");
-        accessControlManager.checkCanShowRoles(context(admin));
-        accessControlManager.checkCanGrantRoles(context(admin), Collections.singleton("role-1"), Collections.singleton(new TrinoPrincipal(USER, "principal")), false, Optional.empty());
-        accessControlManager.checkCanRevokeRoles(context(admin), Collections.singleton("role-1"), Collections.singleton(new TrinoPrincipal(USER, "principal")), false, Optional.empty());
-        accessControlManager.checkCanShowCurrentRoles(context(alice));
-        accessControlManager.checkCanShowRoleGrants(context(alice));
+        accessControlManager.checkCanCreateRole(context(ADMIN), "role-1", Optional.of(new TrinoPrincipal(USER, "principal")));
+        accessControlManager.checkCanDropRole(context(ADMIN), "role-1");
+        accessControlManager.checkCanShowRoles(context(ADMIN));
+        accessControlManager.checkCanGrantRoles(context(ADMIN), Collections.singleton("role-1"), Collections.singleton(new TrinoPrincipal(USER, "principal")), false, Optional.empty());
+        accessControlManager.checkCanRevokeRoles(context(ADMIN), Collections.singleton("role-1"), Collections.singleton(new TrinoPrincipal(USER, "principal")), false, Optional.empty());
+        accessControlManager.checkCanShowCurrentRoles(context(ALICE));
+        accessControlManager.checkCanShowRoleGrants(context(ALICE));
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateRole(context(bob), "role-1", Optional.of(new TrinoPrincipal(USER, "principal"))));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropRole(context(bob), "role-1"));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowRoles(context(bob)));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantRoles(context(bob), Collections.singleton("role-1"), Collections.singleton(new TrinoPrincipal(USER, "principal")), false, Optional.empty()));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeRoles(context(bob), Collections.singleton("role-1"), Collections.singleton(new TrinoPrincipal(USER, "principal")), false, Optional.empty()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanCreateRole(context(BOB), "role-1", Optional.of(new TrinoPrincipal(USER, "principal"))));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDropRole(context(BOB), "role-1"));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanShowRoles(context(BOB)));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantRoles(context(BOB), Collections.singleton("role-1"), Collections.singleton(new TrinoPrincipal(USER, "principal")), false, Optional.empty()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeRoles(context(BOB), Collections.singleton("role-1"), Collections.singleton(new TrinoPrincipal(USER, "principal")), false, Optional.empty()));
     }
 
     @Test
     public void testProcedureOperations()
     {
-        accessControlManager.checkCanExecuteProcedure(context(alice), aliceProcedure);
-        accessControlManager.checkCanExecuteTableProcedure(context(alice), aliceTable, aliceProcedure.getRoutineName());
+        accessControlManager.checkCanExecuteProcedure(context(ALICE), ALICE_PROCEDURE);
+        accessControlManager.checkCanExecuteTableProcedure(context(ALICE), ALICE_TABLE, ALICE_PROCEDURE.getRoutineName());
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanExecuteProcedure(context(bob), aliceProcedure));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanExecuteTableProcedure(context(bob), aliceTable, aliceProcedure.getRoutineName()));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanExecuteProcedure(context(BOB), ALICE_PROCEDURE));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanExecuteTableProcedure(context(BOB), ALICE_TABLE, ALICE_PROCEDURE.getRoutineName()));
     }
 
     @Test
     public void testFunctionOperations()
     {
-        accessControlManager.checkCanCreateFunction(context(alice), aliceFunction);
-        accessControlManager.checkCanDropFunction(context(alice), aliceFunction);
-        accessControlManager.checkCanShowCreateFunction(context(alice), aliceFunction);
-        accessControlManager.checkCanShowFunctions(context(alice), aliceSchema);
-        accessControlManager.canCreateViewWithExecuteFunction(context(alice), aliceFunction);
+        accessControlManager.checkCanCreateFunction(context(ALICE), ALICE_FUNCTION);
+        accessControlManager.checkCanDropFunction(context(ALICE), ALICE_FUNCTION);
+        accessControlManager.checkCanShowCreateFunction(context(ALICE), ALICE_FUNCTION);
+        accessControlManager.checkCanShowFunctions(context(ALICE), ALICE_SCHEMA);
+        accessControlManager.canCreateViewWithExecuteFunction(context(ALICE), ALICE_FUNCTION);
 
-        Set<SchemaFunctionName> functionNames = Collections.singleton(new SchemaFunctionName(aliceSchema.getSchemaName(), aliceFunction.getRoutineName()));
+        Set<SchemaFunctionName> functionNames = Collections.singleton(new SchemaFunctionName(ALICE_SCHEMA.getSchemaName(), ALICE_FUNCTION.getRoutineName()));
 
-        assertEquals(functionNames, accessControlManager.filterFunctions(context(alice), aliceCatalog, functionNames));
-        assertEquals(Collections.emptySet(), accessControlManager.filterFunctions(context(bob), aliceCatalog, functionNames));
+        assertEquals(functionNames, accessControlManager.filterFunctions(context(ALICE), ALICE_CATALOG, functionNames));
+        assertEquals(Collections.emptySet(), accessControlManager.filterFunctions(context(BOB), ALICE_CATALOG, functionNames));
     }
 
     @Test
@@ -329,22 +328,22 @@ public class TestRangerSystemAccessControl
         EntityPrivilege entPrivSelect = new EntityPrivilege("select");
         TrinoPrincipal grantee = new TrinoPrincipal(USER, "user");
         boolean grantOption = false;
-        EntityKindAndName entAliceSchema = new EntityKindAndName("schema", Arrays.asList(aliceSchema.getCatalogName(), aliceSchema.getSchemaName()));
-        EntityKindAndName entAliceTable = new EntityKindAndName("table", Arrays.asList(aliceTable.getCatalogName(), aliceSchema.getSchemaName(), aliceTable.getSchemaTableName().getTableName()));
+        EntityKindAndName entAliceSchema = new EntityKindAndName("schema", Arrays.asList(ALICE_SCHEMA.getCatalogName(), ALICE_SCHEMA.getSchemaName()));
+        EntityKindAndName entAliceTable = new EntityKindAndName("table", Arrays.asList(ALICE_TABLE.getCatalogName(), ALICE_SCHEMA.getSchemaName(), ALICE_TABLE.getSchemaTableName().getTableName()));
 
-        accessControlManager.checkCanGrantEntityPrivilege(context(alice), entPrivSelect, entAliceSchema, grantee, grantOption);
-        accessControlManager.checkCanGrantEntityPrivilege(context(alice), entPrivSelect, entAliceTable, grantee, grantOption);
-        accessControlManager.checkCanDenyEntityPrivilege(context(alice), entPrivSelect, entAliceSchema, grantee);
-        accessControlManager.checkCanDenyEntityPrivilege(context(alice), entPrivSelect, entAliceTable, grantee);
-        accessControlManager.checkCanRevokeEntityPrivilege(context(alice), entPrivSelect, entAliceSchema, grantee, grantOption);
-        accessControlManager.checkCanRevokeEntityPrivilege(context(alice), entPrivSelect, entAliceTable, grantee, grantOption);
+        accessControlManager.checkCanGrantEntityPrivilege(context(ALICE), entPrivSelect, entAliceSchema, grantee, grantOption);
+        accessControlManager.checkCanGrantEntityPrivilege(context(ALICE), entPrivSelect, entAliceTable, grantee, grantOption);
+        accessControlManager.checkCanDenyEntityPrivilege(context(ALICE), entPrivSelect, entAliceSchema, grantee);
+        accessControlManager.checkCanDenyEntityPrivilege(context(ALICE), entPrivSelect, entAliceTable, grantee);
+        accessControlManager.checkCanRevokeEntityPrivilege(context(ALICE), entPrivSelect, entAliceSchema, grantee, grantOption);
+        accessControlManager.checkCanRevokeEntityPrivilege(context(ALICE), entPrivSelect, entAliceTable, grantee, grantOption);
 
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantEntityPrivilege(context(bob), entPrivSelect, entAliceSchema, grantee, grantOption));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantEntityPrivilege(context(bob), entPrivSelect, entAliceTable, grantee, grantOption));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDenyEntityPrivilege(context(bob), entPrivSelect, entAliceSchema, grantee));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDenyEntityPrivilege(context(bob), entPrivSelect, entAliceTable, grantee));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeEntityPrivilege(context(bob), entPrivSelect, entAliceSchema, grantee, grantOption));
-        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeEntityPrivilege(context(bob), entPrivSelect, entAliceTable, grantee, grantOption));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantEntityPrivilege(context(BOB), entPrivSelect, entAliceSchema, grantee, grantOption));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanGrantEntityPrivilege(context(BOB), entPrivSelect, entAliceTable, grantee, grantOption));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDenyEntityPrivilege(context(BOB), entPrivSelect, entAliceSchema, grantee));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanDenyEntityPrivilege(context(BOB), entPrivSelect, entAliceTable, grantee));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeEntityPrivilege(context(BOB), entPrivSelect, entAliceSchema, grantee, grantOption));
+        assertThrows(AccessDeniedException.class, () -> accessControlManager.checkCanRevokeEntityPrivilege(context(BOB), entPrivSelect, entAliceTable, grantee, grantOption));
     }
 
     @Test
@@ -354,11 +353,11 @@ public class TestRangerSystemAccessControl
         final VarcharType varcharType = VarcharType.createVarcharType(20);
 
         // MASK_NONE
-        Optional<ViewExpression> ret = accessControlManager.getColumnMask(context(alice), aliceTable, "national_id", varcharType);
+        Optional<ViewExpression> ret = accessControlManager.getColumnMask(context(ALICE), ALICE_TABLE, "national_id", varcharType);
         assertFalse(ret.isPresent());
 
         // MASK_SHOW_FIRST_4
-        ret = accessControlManager.getColumnMask(context(bob), aliceTable, "national_id", varcharType);
+        ret = accessControlManager.getColumnMask(context(BOB), ALICE_TABLE, "national_id", varcharType);
         assertTrue(ret.isPresent());
         assertEquals("cast(regexp_replace(national_id, '(^.{4})(.*)', x -> x[1] || regexp_replace(x[2], '.', 'X')) as varchar(20))", ret.get().getExpression());
     }
@@ -366,10 +365,10 @@ public class TestRangerSystemAccessControl
     @Test
     public void testRowFilters()
     {
-        List<ViewExpression> retArray = accessControlManager.getRowFilters(context(alice), aliceTable);
+        List<ViewExpression> retArray = accessControlManager.getRowFilters(context(ALICE), ALICE_TABLE);
         assertTrue(retArray.isEmpty());
 
-        retArray = accessControlManager.getRowFilters(context(bob), aliceTable);
+        retArray = accessControlManager.getRowFilters(context(BOB), ALICE_TABLE);
         assertFalse(retArray.isEmpty());
         assertEquals(1, retArray.size());
         assertEquals("status = 'active'", retArray.get(0).getExpression());

@@ -13,19 +13,6 @@
  */
 package io.trino.plugin.ranger;
 
-import io.trino.spi.Plugin;
-import io.trino.spi.security.SystemAccessControlFactory;
-
-import static java.util.Collections.singletonList;
-
-public class TrinoRangerPlugin
-        implements Plugin
-{
-    @Override
-    public Iterable<SystemAccessControlFactory> getSystemAccessControlFactories()
-    {
-        SystemAccessControlFactory factory = new RangerSystemAccessControlFactory();
-
-        return singletonList(factory);
-    }
+enum RangerTrinoAccessType {
+    CREATE, DROP, SELECT, INSERT, DELETE, USE, ALTER, ALL, GRANT, REVOKE, SHOW, IMPERSONATE, EXECUTE, READ_SYSINFO, WRITE_SYSINFO, _ANY
 }

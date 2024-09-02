@@ -15,6 +15,7 @@ package io.trino.plugin.ranger;
 
 import org.apache.ranger.admin.client.AbstractRangerAdminClient;
 import org.apache.ranger.plugin.model.RangerServiceDef;
+import org.apache.ranger.plugin.store.EmbeddedServiceDefsUtil;
 import org.apache.ranger.plugin.util.ServicePolicies;
 
 import java.io.File;
@@ -26,8 +27,6 @@ public class RangerAdminClientImpl
         extends AbstractRangerAdminClient
 {
     private static final String policiesFilepath = "/src/test/resources/trino-policies.json";
-    private static final String serviceDefFilename = "/src/test/resources/ranger-servicedef-trino.json";
-    private static final String tagServiceDefFilename = "/src/test/resources/ranger-servicedef-tag.json";
 
     @Override
     public ServicePolicies getServicePoliciesIfUpdated(long lastKnownVersion, long lastActivationTimeInMillis)
@@ -40,12 +39,10 @@ public class RangerAdminClientImpl
         }
 
         byte[] policiesBytes = Files.readAllBytes(FileSystems.getDefault().getPath(basedir, policiesFilepath));
-        byte[] serviceDefBytes = Files.readAllBytes(FileSystems.getDefault().getPath(basedir, serviceDefFilename));
-        byte[] tagServiceDefBytes = Files.readAllBytes(FileSystems.getDefault().getPath(basedir, tagServiceDefFilename));
 
         ServicePolicies ret = gson.fromJson(new String(policiesBytes, Charset.defaultCharset()), ServicePolicies.class);
-        RangerServiceDef serviceDef = gson.fromJson(new String(serviceDefBytes, Charset.defaultCharset()), RangerServiceDef.class);
-        RangerServiceDef tagServiceDef = gson.fromJson(new String(tagServiceDefBytes, Charset.defaultCharset()), RangerServiceDef.class);
+        RangerServiceDef serviceDef = EmbeddedServiceDefsUtil.instance().getEmbeddedServiceDef("trino");
+        RangerServiceDef tagServiceDef = EmbeddedServiceDefsUtil.instance().getEmbeddedServiceDef("tag");
 
         ret.setServiceDef(serviceDef);
 

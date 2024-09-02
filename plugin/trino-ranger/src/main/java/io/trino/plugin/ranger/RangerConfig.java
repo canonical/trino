@@ -16,13 +16,20 @@ package io.trino.plugin.ranger;
 import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigDescription;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class RangerConfig
 {
-    private String serviceName;
-    private List<String> pluginConfigResource;
-    private List<String> hadoopConfigResource;
+    public static final String RANGER_TRINO_DEFAULT_SERVICE_NAME = "dev_trino";
+    public static final String RANGER_TRINO_DEFAULT_SECURITY_CONF = "ranger-trino-security.xml";
+    public static final String RANGER_TRINO_DEFAULT_AUDIT_CONF = "ranger-trino-audit.xml";
+    public static final String RANGER_TRINO_DEFAULT_POLICYMGR_SSL_CONF = "ranger-policymgr-ssl.xml";
+    public static final String RANGER_TRINO_DEFAULT_HADOOP_CONF = "trino-ranger-site.xml";
+
+    private String serviceName = RANGER_TRINO_DEFAULT_SERVICE_NAME;
+    private List<String> pluginConfigResource = Arrays.asList(RANGER_TRINO_DEFAULT_SECURITY_CONF, RANGER_TRINO_DEFAULT_AUDIT_CONF, RANGER_TRINO_DEFAULT_POLICYMGR_SSL_CONF);
+    private List<String> hadoopConfigResource = Arrays.asList(RANGER_TRINO_DEFAULT_HADOOP_CONF);
 
     public String getServiceName()
     {
