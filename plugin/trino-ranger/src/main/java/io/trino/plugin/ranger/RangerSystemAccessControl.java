@@ -13,7 +13,6 @@
  */
 package io.trino.plugin.ranger;
 
-import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import io.trino.spi.QueryId;
 import io.trino.spi.connector.CatalogSchemaName;
@@ -59,6 +58,86 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static io.trino.plugin.ranger.RangerTrinoAccessType.ALTER;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.CREATE;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.DELETE;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.DROP;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.EXECUTE;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.GRANT;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.IMPERSONATE;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.INSERT;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.READ_SYSINFO;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.REVOKE;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.SELECT;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.SHOW;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.USE;
+import static io.trino.plugin.ranger.RangerTrinoAccessType.WRITE_SYSINFO;
+import static io.trino.plugin.ranger.RangerTrinoAccessType._ANY;
+import static io.trino.spi.security.AccessDeniedException.denyAddColumn;
+import static io.trino.spi.security.AccessDeniedException.denyAlterColumn;
+import static io.trino.spi.security.AccessDeniedException.denyCommentColumn;
+import static io.trino.spi.security.AccessDeniedException.denyCommentTable;
+import static io.trino.spi.security.AccessDeniedException.denyCommentView;
+import static io.trino.spi.security.AccessDeniedException.denyCreateCatalog;
+import static io.trino.spi.security.AccessDeniedException.denyCreateFunction;
+import static io.trino.spi.security.AccessDeniedException.denyCreateMaterializedView;
+import static io.trino.spi.security.AccessDeniedException.denyCreateRole;
+import static io.trino.spi.security.AccessDeniedException.denyCreateSchema;
+import static io.trino.spi.security.AccessDeniedException.denyCreateTable;
+import static io.trino.spi.security.AccessDeniedException.denyCreateView;
+import static io.trino.spi.security.AccessDeniedException.denyCreateViewWithSelect;
+import static io.trino.spi.security.AccessDeniedException.denyDeleteTable;
+import static io.trino.spi.security.AccessDeniedException.denyDenyEntityPrivilege;
+import static io.trino.spi.security.AccessDeniedException.denyDenySchemaPrivilege;
+import static io.trino.spi.security.AccessDeniedException.denyDenyTablePrivilege;
+import static io.trino.spi.security.AccessDeniedException.denyDropCatalog;
+import static io.trino.spi.security.AccessDeniedException.denyDropColumn;
+import static io.trino.spi.security.AccessDeniedException.denyDropFunction;
+import static io.trino.spi.security.AccessDeniedException.denyDropMaterializedView;
+import static io.trino.spi.security.AccessDeniedException.denyDropRole;
+import static io.trino.spi.security.AccessDeniedException.denyDropSchema;
+import static io.trino.spi.security.AccessDeniedException.denyDropTable;
+import static io.trino.spi.security.AccessDeniedException.denyDropView;
+import static io.trino.spi.security.AccessDeniedException.denyExecuteProcedure;
+import static io.trino.spi.security.AccessDeniedException.denyExecuteQuery;
+import static io.trino.spi.security.AccessDeniedException.denyExecuteTableProcedure;
+import static io.trino.spi.security.AccessDeniedException.denyGrantEntityPrivilege;
+import static io.trino.spi.security.AccessDeniedException.denyGrantRoles;
+import static io.trino.spi.security.AccessDeniedException.denyGrantSchemaPrivilege;
+import static io.trino.spi.security.AccessDeniedException.denyGrantTablePrivilege;
+import static io.trino.spi.security.AccessDeniedException.denyImpersonateUser;
+import static io.trino.spi.security.AccessDeniedException.denyInsertTable;
+import static io.trino.spi.security.AccessDeniedException.denyReadSystemInformationAccess;
+import static io.trino.spi.security.AccessDeniedException.denyRefreshMaterializedView;
+import static io.trino.spi.security.AccessDeniedException.denyRenameColumn;
+import static io.trino.spi.security.AccessDeniedException.denyRenameMaterializedView;
+import static io.trino.spi.security.AccessDeniedException.denyRenameSchema;
+import static io.trino.spi.security.AccessDeniedException.denyRenameTable;
+import static io.trino.spi.security.AccessDeniedException.denyRenameView;
+import static io.trino.spi.security.AccessDeniedException.denyRevokeEntityPrivilege;
+import static io.trino.spi.security.AccessDeniedException.denyRevokeRoles;
+import static io.trino.spi.security.AccessDeniedException.denyRevokeSchemaPrivilege;
+import static io.trino.spi.security.AccessDeniedException.denyRevokeTablePrivilege;
+import static io.trino.spi.security.AccessDeniedException.denySelectColumns;
+import static io.trino.spi.security.AccessDeniedException.denySetCatalogSessionProperty;
+import static io.trino.spi.security.AccessDeniedException.denySetMaterializedViewProperties;
+import static io.trino.spi.security.AccessDeniedException.denySetSchemaAuthorization;
+import static io.trino.spi.security.AccessDeniedException.denySetSystemSessionProperty;
+import static io.trino.spi.security.AccessDeniedException.denySetTableAuthorization;
+import static io.trino.spi.security.AccessDeniedException.denySetTableProperties;
+import static io.trino.spi.security.AccessDeniedException.denySetUser;
+import static io.trino.spi.security.AccessDeniedException.denySetViewAuthorization;
+import static io.trino.spi.security.AccessDeniedException.denyShowColumns;
+import static io.trino.spi.security.AccessDeniedException.denyShowCreateFunction;
+import static io.trino.spi.security.AccessDeniedException.denyShowCreateSchema;
+import static io.trino.spi.security.AccessDeniedException.denyShowCreateTable;
+import static io.trino.spi.security.AccessDeniedException.denyShowFunctions;
+import static io.trino.spi.security.AccessDeniedException.denyShowRoles;
+import static io.trino.spi.security.AccessDeniedException.denyShowSchemas;
+import static io.trino.spi.security.AccessDeniedException.denyShowTables;
+import static io.trino.spi.security.AccessDeniedException.denyTruncateTable;
+import static io.trino.spi.security.AccessDeniedException.denyUpdateTableColumns;
+import static io.trino.spi.security.AccessDeniedException.denyWriteSystemInformationAccess;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNullElse;
 
@@ -111,8 +190,8 @@ public class RangerSystemAccessControl
     @Override
     public void checkCanImpersonateUser(Identity identity, String userName)
     {
-        if (!hasPermission(createUserResource(userName), identity, null, RangerTrinoAccessType.IMPERSONATE, "ImpersonateUser")) {
-            AccessDeniedException.denyImpersonateUser(identity.getUser(), userName);
+        if (!hasPermission(createUserResource(userName), identity, null, IMPERSONATE, "ImpersonateUser")) {
+            denyImpersonateUser(identity.getUser(), userName);
         }
     }
 
@@ -120,70 +199,64 @@ public class RangerSystemAccessControl
     @Override
     public void checkCanSetUser(Optional<Principal> principal, String userName)
     {
-        if (!hasPermission(createUserResource(userName), principal, null, RangerTrinoAccessType.IMPERSONATE, "SetUser")) {
-            AccessDeniedException.denySetUser(principal, userName);
+        if (!hasPermission(createUserResource(userName), principal, null, IMPERSONATE, "SetUser")) {
+            denySetUser(principal, userName);
         }
     }
 
     @Override
     public void checkCanExecuteQuery(Identity identity, QueryId queryId)
     {
-        if (!hasPermission(createResource(queryId), identity, queryId, RangerTrinoAccessType.EXECUTE, "ExecuteQuery")) {
-            AccessDeniedException.denyExecuteQuery();
+        if (!hasPermission(createResource(queryId), identity, queryId, EXECUTE, "ExecuteQuery")) {
+            denyExecuteQuery();
         }
     }
 
     @Override
     public void checkCanViewQueryOwnedBy(Identity identity, Identity queryOwner)
     {
-        if (!hasPermission(createUserResource(queryOwner.getUser()), identity, null, RangerTrinoAccessType.IMPERSONATE, "ViewQueryOwnedBy")) {
-            AccessDeniedException.denyImpersonateUser(identity.getUser(), queryOwner.getUser());
+        if (!hasPermission(createUserResource(queryOwner.getUser()), identity, null, IMPERSONATE, "ViewQueryOwnedBy")) {
+            denyImpersonateUser(identity.getUser(), queryOwner.getUser());
         }
     }
 
     @Override
     public Collection<Identity> filterViewQueryOwnedBy(Identity identity, Collection<Identity> queryOwners)
     {
-        Set<Identity> toExclude = null;
+        Set<Identity> toExclude = new HashSet<>();
 
         for (Identity queryOwner : queryOwners) {
-            if (!hasPermissionForFilter(createUserResource(queryOwner.getUser()), identity, null, RangerTrinoAccessType.IMPERSONATE, "filterViewQueryOwnedBy")) {
+            if (!hasPermissionForFilter(createUserResource(queryOwner.getUser()), identity, null, IMPERSONATE, "filterViewQueryOwnedBy")) {
                 LOG.debug("filterViewQueryOwnedBy(user={}): skipping queries owned by {}", identity, queryOwner);
-
-                if (toExclude == null) {
-                    toExclude = new HashSet<>();
-                }
 
                 toExclude.add(queryOwner);
             }
         }
 
-        Collection<Identity> ret = (toExclude == null) ? queryOwners : queryOwners.stream().filter(((Predicate<? super Identity>) toExclude::contains).negate()).collect(Collectors.toList());
-
-        return ret;
+        return toExclude.isEmpty() ? queryOwners : queryOwners.stream().filter(((Predicate<? super Identity>) toExclude::contains).negate()).collect(Collectors.toList());
     }
 
     @Override
     public void checkCanKillQueryOwnedBy(Identity identity, Identity queryOwner)
     {
-        if (!hasPermission(createUserResource(queryOwner.getUser()), identity, null, RangerTrinoAccessType.IMPERSONATE, "KillQueryOwnedBy")) {
-            AccessDeniedException.denyImpersonateUser(identity.getUser(), queryOwner.getUser());
+        if (!hasPermission(createUserResource(queryOwner.getUser()), identity, null, IMPERSONATE, "KillQueryOwnedBy")) {
+            denyImpersonateUser(identity.getUser(), queryOwner.getUser());
         }
     }
 
     @Override
     public void checkCanReadSystemInformation(Identity identity)
     {
-        if (!hasPermission(createSystemInformation(), identity, null, RangerTrinoAccessType.READ_SYSINFO, "ReadSystemInformation")) {
-            AccessDeniedException.denyReadSystemInformationAccess();
+        if (!hasPermission(createSystemInformation(), identity, null, READ_SYSINFO, "ReadSystemInformation")) {
+            denyReadSystemInformationAccess();
         }
     }
 
     @Override
     public void checkCanWriteSystemInformation(Identity identity)
     {
-        if (!hasPermission(createSystemInformation(), identity, null, RangerTrinoAccessType.WRITE_SYSINFO, "WriteSystemInformation")) {
-            AccessDeniedException.denyWriteSystemInformationAccess();
+        if (!hasPermission(createSystemInformation(), identity, null, WRITE_SYSINFO, "WriteSystemInformation")) {
+            denyWriteSystemInformationAccess();
         }
     }
 
@@ -191,202 +264,188 @@ public class RangerSystemAccessControl
     @Override
     public void checkCanSetSystemSessionProperty(Identity identity, String propertyName)
     {
-        if (!hasPermission(createSystemPropertyResource(propertyName), identity, null, RangerTrinoAccessType.ALTER, "SetSystemSessionProperty")) {
-            AccessDeniedException.denySetSystemSessionProperty(propertyName);
+        if (!hasPermission(createSystemPropertyResource(propertyName), identity, null, ALTER, "SetSystemSessionProperty")) {
+            denySetSystemSessionProperty(propertyName);
         }
     }
 
     @Override
     public void checkCanSetSystemSessionProperty(Identity identity, QueryId queryId, String propertyName)
     {
-        if (!hasPermission(createSystemPropertyResource(propertyName), identity, queryId, RangerTrinoAccessType.ALTER, "SetSystemSessionProperty")) {
-            AccessDeniedException.denySetSystemSessionProperty(propertyName);
+        if (!hasPermission(createSystemPropertyResource(propertyName), identity, queryId, ALTER, "SetSystemSessionProperty")) {
+            denySetSystemSessionProperty(propertyName);
         }
     }
 
     @Override
     public boolean canAccessCatalog(SystemSecurityContext context, String catalogName)
     {
-        return hasPermission(createResource(catalogName), context, RangerTrinoAccessType.USE, "AccessCatalog");
+        return hasPermission(createResource(catalogName), context, USE, "AccessCatalog");
     }
 
     @Override
     public void checkCanCreateCatalog(SystemSecurityContext context, String catalogName)
     {
-        if (!hasPermission(createResource(catalogName), context, RangerTrinoAccessType.CREATE, "CreateCatalog")) {
-            AccessDeniedException.denyCreateCatalog(catalogName);
+        if (!hasPermission(createResource(catalogName), context, CREATE, "CreateCatalog")) {
+            denyCreateCatalog(catalogName);
         }
     }
 
     @Override
     public void checkCanDropCatalog(SystemSecurityContext context, String catalogName)
     {
-        if (!hasPermission(createResource(catalogName), context, RangerTrinoAccessType.DROP, "DropCatalog")) {
-            AccessDeniedException.denyCreateCatalog(catalogName);
+        if (!hasPermission(createResource(catalogName), context, DROP, "DropCatalog")) {
+            denyDropCatalog(catalogName);
         }
     }
 
     @Override
     public void checkCanSetCatalogSessionProperty(SystemSecurityContext context, String catalogName, String propertyName)
     {
-        if (!hasPermission(createCatalogSessionResource(catalogName, propertyName), context, RangerTrinoAccessType.ALTER, "SetCatalogSessionProperty")) {
-            AccessDeniedException.denySetCatalogSessionProperty(catalogName, propertyName);
+        if (!hasPermission(createCatalogSessionResource(catalogName, propertyName), context, ALTER, "SetCatalogSessionProperty")) {
+            denySetCatalogSessionProperty(catalogName, propertyName);
         }
     }
 
     @Override
     public Set<String> filterCatalogs(SystemSecurityContext context, Set<String> catalogs)
     {
-        Set<String> toExclude = null;
+        Set<String> toExclude = new HashSet<>();
 
         for (String catalog : catalogs) {
-            if (!hasPermissionForFilter(createResource(catalog), context, RangerTrinoAccessType._ANY, "filterCatalogs")) {
+            if (!hasPermissionForFilter(createResource(catalog), context, _ANY, "filterCatalogs")) {
                 LOG.debug("filterCatalogs(user={}): skipping catalog {}", context.getIdentity(), catalog);
-
-                if (toExclude == null) {
-                    toExclude = new HashSet<>();
-                }
 
                 toExclude.add(catalog);
             }
         }
 
-        return toExclude == null ? catalogs : catalogs.stream().filter(((Predicate<? super String>) toExclude::contains).negate()).collect(Collectors.toSet());
+        return toExclude.isEmpty() ? catalogs : catalogs.stream().filter(((Predicate<? super String>) toExclude::contains).negate()).collect(Collectors.toSet());
     }
 
     @Override
     public void checkCanCreateSchema(SystemSecurityContext context, CatalogSchemaName schema, Map<String, Object> properties)
     {
-        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, RangerTrinoAccessType.CREATE, "CreateSchema")) {
-            AccessDeniedException.denyCreateSchema(schema.getSchemaName());
+        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, CREATE, "CreateSchema")) {
+            denyCreateSchema(schema.getSchemaName());
         }
     }
 
     @Override
     public void checkCanDropSchema(SystemSecurityContext context, CatalogSchemaName schema)
     {
-        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, RangerTrinoAccessType.DROP, "DropSchema")) {
-            AccessDeniedException.denyDropSchema(schema.getSchemaName());
+        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, DROP, "DropSchema")) {
+            denyDropSchema(schema.getSchemaName());
         }
     }
 
     @Override
     public void checkCanRenameSchema(SystemSecurityContext context, CatalogSchemaName schema, String newSchemaName)
     {
-        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, RangerTrinoAccessType.ALTER, "RenameSchema")) {
-            AccessDeniedException.denyRenameSchema(schema.getSchemaName(), newSchemaName);
+        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, ALTER, "RenameSchema")) {
+            denyRenameSchema(schema.getSchemaName(), newSchemaName);
         }
     }
 
     @Override
     public void checkCanSetSchemaAuthorization(SystemSecurityContext context, CatalogSchemaName schema, TrinoPrincipal principal)
     {
-        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, RangerTrinoAccessType.GRANT, "SetSchemaAuthorization")) {
-            AccessDeniedException.denySetSchemaAuthorization(schema.getSchemaName(), principal);
+        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, GRANT, "SetSchemaAuthorization")) {
+            denySetSchemaAuthorization(schema.getSchemaName(), principal);
         }
     }
 
     @Override
     public void checkCanShowSchemas(SystemSecurityContext context, String catalogName)
     {
-        if (!hasPermission(createResource(catalogName), context, RangerTrinoAccessType.SHOW, "ShowSchemas")) {
-            AccessDeniedException.denyShowSchemas(catalogName);
+        if (!hasPermission(createResource(catalogName), context, SHOW, "ShowSchemas")) {
+            denyShowSchemas(catalogName);
         }
     }
 
     @Override
     public Set<String> filterSchemas(SystemSecurityContext context, String catalogName, Set<String> schemaNames)
     {
-        Set<String> toExclude = null;
+        Set<String> toExclude = new HashSet<>();
 
         for (String schemaName : schemaNames) {
-            if (!hasPermissionForFilter(createResource(catalogName, schemaName), context, RangerTrinoAccessType._ANY, "filterSchemas")) {
-                if (toExclude == null) {
-                    toExclude = new HashSet<>();
-                }
-
+            if (!hasPermissionForFilter(createResource(catalogName, schemaName), context, _ANY, "filterSchemas")) {
                 toExclude.add(schemaName);
             }
         }
 
-        return toExclude == null ? schemaNames : schemaNames.stream().filter(((Predicate<? super String>) toExclude::contains).negate()).collect(Collectors.toSet());
+        return toExclude.isEmpty() ? schemaNames : schemaNames.stream().filter(((Predicate<? super String>) toExclude::contains).negate()).collect(Collectors.toSet());
     }
 
     @Override
     public void checkCanShowCreateSchema(SystemSecurityContext context, CatalogSchemaName schema)
     {
-        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, RangerTrinoAccessType.SHOW, "ShowCreateSchema")) {
-            AccessDeniedException.denyShowCreateSchema(schema.getSchemaName());
+        if (!hasPermission(createResource(schema.getCatalogName(), schema.getSchemaName()), context, SHOW, "ShowCreateSchema")) {
+            denyShowCreateSchema(schema.getSchemaName());
         }
     }
 
     @Override
     public void checkCanCreateTable(SystemSecurityContext context, CatalogSchemaTableName table, Map<String, Object> properties)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.CREATE, "CreateTable")) {
-            AccessDeniedException.denyCreateTable(table.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(table), context, CREATE, "CreateTable")) {
+            denyCreateTable(table.getSchemaTableName().getTableName());
         }
     }
 
-    /**
-     * This is evaluated against the table name as ownership information is not available
-     */
     @Override
     public void checkCanDropTable(SystemSecurityContext context, CatalogSchemaTableName table)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.DROP, "DropTable")) {
-            AccessDeniedException.denyDropTable(table.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(table), context, DROP, "DropTable")) {
+            denyDropTable(table.getSchemaTableName().getTableName());
         }
     }
 
-    /**
-     * This is evaluated against the table name as ownership information is not available
-     */
     @Override
     public void checkCanRenameTable(SystemSecurityContext context, CatalogSchemaTableName table, CatalogSchemaTableName newTable)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.ALTER, "RenameTable")) {
-            AccessDeniedException.denyRenameTable(table.getSchemaTableName().getTableName(), newTable.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(table), context, ALTER, "RenameTable")) {
+            denyRenameTable(table.getSchemaTableName().getTableName(), newTable.getSchemaTableName().getTableName());
         }
     }
 
     @Override
     public void checkCanSetTableProperties(SystemSecurityContext context, CatalogSchemaTableName table, Map<String, Optional<Object>> properties)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.ALTER, "SetTableProperties")) {
-            AccessDeniedException.denySetTableProperties(table.toString());
+        if (!hasPermission(createResource(table), context, ALTER, "SetTableProperties")) {
+            denySetTableProperties(table.toString());
         }
     }
 
     @Override
     public void checkCanSetTableComment(SystemSecurityContext context, CatalogSchemaTableName table)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.ALTER, "SetTableComment")) {
-            AccessDeniedException.denyCommentTable(table.toString());
+        if (!hasPermission(createResource(table), context, ALTER, "SetTableComment")) {
+            denyCommentTable(table.toString());
         }
     }
 
     @Override
     public void checkCanSetTableAuthorization(SystemSecurityContext context, CatalogSchemaTableName table, TrinoPrincipal principal)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.GRANT, "SetTableAuthorization")) {
-            AccessDeniedException.denySetTableAuthorization(table.toString(), principal);
+        if (!hasPermission(createResource(table), context, GRANT, "SetTableAuthorization")) {
+            denySetTableAuthorization(table.toString(), principal);
         }
     }
 
     @Override
     public void checkCanShowTables(SystemSecurityContext context, CatalogSchemaName schema)
     {
-        if (!hasPermission(createResource(schema), context, RangerTrinoAccessType.SHOW, "ShowTables")) {
-            AccessDeniedException.denyShowTables(schema.toString());
+        if (!hasPermission(createResource(schema), context, SHOW, "ShowTables")) {
+            denyShowTables(schema.toString());
         }
     }
 
     @Override
     public void checkCanShowCreateTable(SystemSecurityContext context, CatalogSchemaTableName table)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.SHOW, "ShowCreateTable")) {
-            AccessDeniedException.denyShowCreateTable(table.toString());
+        if (!hasPermission(createResource(table), context, SHOW, "ShowCreateTable")) {
+            denyShowCreateTable(table.toString());
         }
     }
 
@@ -395,59 +454,52 @@ public class RangerSystemAccessControl
     {
         RangerTrinoResource res = createResource(table);
 
-        if (!hasPermission(res, context, RangerTrinoAccessType.INSERT, "InsertIntoTable")) {
-            AccessDeniedException.denyInsertTable(table.getSchemaTableName().getTableName());
+        if (!hasPermission(res, context, INSERT, "InsertIntoTable")) {
+            denyInsertTable(table.getSchemaTableName().getTableName());
         }
     }
 
     @Override
     public void checkCanDeleteFromTable(SystemSecurityContext context, CatalogSchemaTableName table)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.DELETE, "DeleteFromTable")) {
-            AccessDeniedException.denyDeleteTable(table.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(table), context, DELETE, "DeleteFromTable")) {
+            denyDeleteTable(table.getSchemaTableName().getTableName());
         }
     }
 
     @Override
     public void checkCanTruncateTable(SystemSecurityContext context, CatalogSchemaTableName table)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.DELETE, "TruncateTable")) {
-            AccessDeniedException.denyTruncateTable(table.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(table), context, DELETE, "TruncateTable")) {
+            denyTruncateTable(table.getSchemaTableName().getTableName());
         }
     }
 
     @Override
     public Set<SchemaTableName> filterTables(SystemSecurityContext context, String catalogName, Set<SchemaTableName> tableNames)
     {
-        Set<SchemaTableName> toExclude = null;
+        Set<SchemaTableName> toExclude = new HashSet<>();
 
         for (SchemaTableName tableName : tableNames) {
             RangerTrinoResource res = createResource(catalogName, tableName.getSchemaName(), tableName.getTableName());
 
-            if (!hasPermissionForFilter(res, context, RangerTrinoAccessType._ANY, "filterTables")) {
+            if (!hasPermissionForFilter(res, context, _ANY, "filterTables")) {
                 LOG.debug("filterTables(user={}): skipping table {}.{}.{}", context.getIdentity(), catalogName, tableName.getSchemaName(), tableName.getTableName());
-
-                if (toExclude == null) {
-                    toExclude = new HashSet<>();
-                }
 
                 toExclude.add(tableName);
             }
         }
 
-        return toExclude == null ? tableNames : tableNames.stream().filter(((Predicate<? super SchemaTableName>) toExclude::contains).negate()).collect(Collectors.toSet());
+        return toExclude.isEmpty() ? tableNames : tableNames.stream().filter(((Predicate<? super SchemaTableName>) toExclude::contains).negate()).collect(Collectors.toSet());
     }
 
-    /**
-     * This is evaluated on table level
-     */
     @Override
     public void checkCanAddColumn(SystemSecurityContext context, CatalogSchemaTableName table)
     {
         RangerTrinoResource res = createResource(table);
 
-        if (!hasPermission(res, context, RangerTrinoAccessType.ALTER, "AddColumn")) {
-            AccessDeniedException.denyAddColumn(table.getSchemaTableName().getTableName());
+        if (!hasPermission(res, context, ALTER, "AddColumn")) {
+            denyAddColumn(table.getSchemaTableName().getTableName());
         }
     }
 
@@ -456,51 +508,42 @@ public class RangerSystemAccessControl
     {
         RangerTrinoResource res = createResource(table);
 
-        if (!hasPermission(res, context, RangerTrinoAccessType.ALTER, "AlterColumn")) {
-            AccessDeniedException.denyAddColumn(table.getSchemaTableName().getTableName());
+        if (!hasPermission(res, context, ALTER, "AlterColumn")) {
+            denyAlterColumn(table.getSchemaTableName().getTableName());
         }
     }
 
-    /**
-     * This is evaluated on table level
-     */
     @Override
     public void checkCanDropColumn(SystemSecurityContext context, CatalogSchemaTableName table)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.ALTER, "DropColumn")) {
-            AccessDeniedException.denyDropColumn(table.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(table), context, ALTER, "DropColumn")) {
+            denyDropColumn(table.getSchemaTableName().getTableName());
         }
     }
 
-    /**
-     * This is evaluated on table level
-     */
     @Override
     public void checkCanRenameColumn(SystemSecurityContext context, CatalogSchemaTableName table)
     {
         RangerTrinoResource res = createResource(table);
 
-        if (!hasPermission(res, context, RangerTrinoAccessType.ALTER, "RenameColumn")) {
-            AccessDeniedException.denyRenameColumn(table.getSchemaTableName().getTableName());
+        if (!hasPermission(res, context, ALTER, "RenameColumn")) {
+            denyRenameColumn(table.getSchemaTableName().getTableName());
         }
     }
 
     @Override
     public void checkCanSetColumnComment(SystemSecurityContext context, CatalogSchemaTableName table)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.ALTER, "SetColumnComment")) {
-            AccessDeniedException.denyCommentColumn(table.toString());
+        if (!hasPermission(createResource(table), context, ALTER, "SetColumnComment")) {
+            denyCommentColumn(table.toString());
         }
     }
 
-    /**
-     * This is evaluated on table level
-     */
     @Override
     public void checkCanShowColumns(SystemSecurityContext context, CatalogSchemaTableName table)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.SHOW, "ShowColumns")) {
-            AccessDeniedException.denyShowColumns(table.toString());
+        if (!hasPermission(createResource(table), context, SHOW, "ShowColumns")) {
+            denyShowColumns(table.toString());
         }
     }
 
@@ -508,8 +551,8 @@ public class RangerSystemAccessControl
     public void checkCanSelectFromColumns(SystemSecurityContext context, CatalogSchemaTableName table, Set<String> columns)
     {
         for (RangerTrinoResource res : createResource(table, columns)) {
-            if (!hasPermission(res, context, RangerTrinoAccessType.SELECT, "SelectFromColumns")) {
-                AccessDeniedException.denySelectColumns(table.getSchemaTableName().getTableName(), columns);
+            if (!hasPermission(res, context, SELECT, "SelectFromColumns")) {
+                denySelectColumns(table.getSchemaTableName().getTableName(), columns);
             }
         }
     }
@@ -517,8 +560,8 @@ public class RangerSystemAccessControl
     @Override
     public void checkCanUpdateTableColumns(SystemSecurityContext context, CatalogSchemaTableName table, Set<String> updatedColumnNames)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.INSERT, "UpdateTableColumns")) {
-            AccessDeniedException.denyUpdateTableColumns(table.getSchemaTableName().getTableName(), updatedColumnNames);
+        if (!hasPermission(createResource(table), context, INSERT, "UpdateTableColumns")) {
+            denyUpdateTableColumns(table.getSchemaTableName().getTableName(), updatedColumnNames);
         }
     }
 
@@ -526,7 +569,7 @@ public class RangerSystemAccessControl
     @Override
     public Set<String> filterColumns(SystemSecurityContext context, CatalogSchemaTableName table, Set<String> columns)
     {
-        Set<String> toExclude = null;
+        Set<String> toExclude = new HashSet<>();
         String catalogName = table.getCatalogName();
         String schemaName = table.getSchemaTableName().getSchemaName();
         String tableName = table.getSchemaTableName().getTableName();
@@ -534,62 +577,46 @@ public class RangerSystemAccessControl
         for (String column : columns) {
             RangerTrinoResource res = createResource(catalogName, schemaName, tableName, column);
 
-            if (!hasPermissionForFilter(res, context, RangerTrinoAccessType._ANY, "filterColumns")) {
-                if (toExclude == null) {
-                    toExclude = new HashSet<>();
-                }
-
+            if (!hasPermissionForFilter(res, context, _ANY, "filterColumns")) {
                 toExclude.add(column);
             }
         }
 
-        return toExclude == null ? columns : columns.stream().filter(((Predicate<? super String>) toExclude::contains).negate()).collect(Collectors.toSet());
+        return toExclude.isEmpty() ? columns : columns.stream().filter(((Predicate<? super String>) toExclude::contains).negate()).collect(Collectors.toSet());
     }
 
-    /**
-     * Create view is verified on schema level
-     */
     @Override
     public void checkCanCreateView(SystemSecurityContext context, CatalogSchemaTableName view)
     {
-        if (!hasPermission(createResource(view), context, RangerTrinoAccessType.CREATE, "CreateView")) {
-            AccessDeniedException.denyCreateView(view.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(view), context, CREATE, "CreateView")) {
+            denyCreateView(view.getSchemaTableName().getTableName());
         }
     }
 
-    /**
-     * This is evaluated against the table name as ownership information is not available
-     */
     @Override
     public void checkCanDropView(SystemSecurityContext context, CatalogSchemaTableName view)
     {
-        if (!hasPermission(createResource(view), context, RangerTrinoAccessType.DROP, "DropView")) {
-            AccessDeniedException.denyDropView(view.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(view), context, DROP, "DropView")) {
+            denyDropView(view.getSchemaTableName().getTableName());
         }
     }
 
-    /**
-     * This is evaluated against the table name as ownership information is not available
-     */
     @Override
     public void checkCanRenameView(SystemSecurityContext context, CatalogSchemaTableName view, CatalogSchemaTableName newView)
     {
-        if (!hasPermission(createResource(view), context, RangerTrinoAccessType.ALTER, "RenameView")) {
-            AccessDeniedException.denyRenameView(view.toString(), newView.toString());
+        if (!hasPermission(createResource(view), context, ALTER, "RenameView")) {
+            denyRenameView(view.toString(), newView.toString());
         }
     }
 
     @Override
     public void checkCanSetViewAuthorization(SystemSecurityContext context, CatalogSchemaTableName view, TrinoPrincipal principal)
     {
-        if (!hasPermission(createResource(view), context, RangerTrinoAccessType.ALTER, "SetViewAuthorization")) {
-            AccessDeniedException.denySetViewAuthorization(view.toString(), principal);
+        if (!hasPermission(createResource(view), context, ALTER, "SetViewAuthorization")) {
+            denySetViewAuthorization(view.toString(), principal);
         }
     }
 
-    /**
-     * This check equals the check for checkCanCreateView
-     */
     @Override
     public void checkCanCreateViewWithSelectFromColumns(SystemSecurityContext context, CatalogSchemaTableName table, Set<String> columns)
     {
@@ -597,171 +624,167 @@ public class RangerSystemAccessControl
             checkCanCreateView(context, table);
         }
         catch (AccessDeniedException ade) {
-            AccessDeniedException.denyCreateViewWithSelect(table.getSchemaTableName().getTableName(), context.getIdentity());
+            denyCreateViewWithSelect(table.getSchemaTableName().getTableName(), context.getIdentity());
         }
     }
 
     @Override
     public void checkCanSetViewComment(SystemSecurityContext context, CatalogSchemaTableName view)
     {
-        if (!hasPermission(createResource(view), context, RangerTrinoAccessType.ALTER, "SetViewComment")) {
-            AccessDeniedException.denyCommentView(view.toString());
+        if (!hasPermission(createResource(view), context, ALTER, "SetViewComment")) {
+            denyCommentView(view.toString());
         }
     }
 
-    /**
-     *
-     * check if materialized view can be created
-     */
     @Override
     public void checkCanCreateMaterializedView(SystemSecurityContext context, CatalogSchemaTableName materializedView, Map<String, Object> properties)
     {
-        if (!hasPermission(createResource(materializedView), context, RangerTrinoAccessType.CREATE, "CreateMaterializedView")) {
-            AccessDeniedException.denyCreateMaterializedView(materializedView.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(materializedView), context, CREATE, "CreateMaterializedView")) {
+            denyCreateMaterializedView(materializedView.getSchemaTableName().getTableName());
         }
     }
 
     @Override
     public void checkCanRefreshMaterializedView(SystemSecurityContext context, CatalogSchemaTableName materializedView)
     {
-        if (!hasPermission(createResource(materializedView), context, RangerTrinoAccessType.ALTER, "RefreshMaterializedView")) {
-            AccessDeniedException.denyRefreshMaterializedView(materializedView.toString());
+        if (!hasPermission(createResource(materializedView), context, ALTER, "RefreshMaterializedView")) {
+            denyRefreshMaterializedView(materializedView.toString());
         }
     }
 
     @Override
     public void checkCanSetMaterializedViewProperties(SystemSecurityContext context, CatalogSchemaTableName materializedView, Map<String, Optional<Object>> properties)
     {
-        if (!hasPermission(createResource(materializedView), context, RangerTrinoAccessType.ALTER, "SetMaterializedViewProperties")) {
-            AccessDeniedException.denyRefreshMaterializedView(materializedView.toString());
+        if (!hasPermission(createResource(materializedView), context, ALTER, "SetMaterializedViewProperties")) {
+            denySetMaterializedViewProperties(materializedView.toString());
         }
     }
 
     @Override
     public void checkCanDropMaterializedView(SystemSecurityContext context, CatalogSchemaTableName materializedView)
     {
-        if (!hasPermission(createResource(materializedView), context, RangerTrinoAccessType.DROP, "DropMaterializedView")) {
-            AccessDeniedException.denyCreateView(materializedView.getSchemaTableName().getTableName());
+        if (!hasPermission(createResource(materializedView), context, DROP, "DropMaterializedView")) {
+            denyDropMaterializedView(materializedView.getSchemaTableName().getTableName());
         }
     }
 
     @Override
     public void checkCanRenameMaterializedView(SystemSecurityContext context, CatalogSchemaTableName materializedView, CatalogSchemaTableName newView)
     {
-        if (!hasPermission(createResource(materializedView), context, RangerTrinoAccessType.DROP, "RenameMaterializedView")) {
-            AccessDeniedException.denyRenameMaterializedView(materializedView.toString(), newView.toString());
+        if (!hasPermission(createResource(materializedView), context, DROP, "RenameMaterializedView")) {
+            denyRenameMaterializedView(materializedView.toString(), newView.toString());
         }
     }
 
     @Override
     public void checkCanGrantSchemaPrivilege(SystemSecurityContext context, Privilege privilege, CatalogSchemaName schema, TrinoPrincipal grantee, boolean grantOption)
     {
-        if (!hasPermission(createResource(schema), context, RangerTrinoAccessType.GRANT, "GrantSchemaPrivilege")) {
-            AccessDeniedException.denyGrantSchemaPrivilege(privilege.toString(), schema.toString());
+        if (!hasPermission(createResource(schema), context, GRANT, "GrantSchemaPrivilege")) {
+            denyGrantSchemaPrivilege(privilege.toString(), schema.toString());
         }
     }
 
     @Override
     public void checkCanDenySchemaPrivilege(SystemSecurityContext context, Privilege privilege, CatalogSchemaName schema, TrinoPrincipal grantee)
     {
-        if (!hasPermission(createResource(schema), context, RangerTrinoAccessType.REVOKE, "DenySchemaPrivilege")) {
-            AccessDeniedException.denyDenySchemaPrivilege(privilege.toString(), schema.toString());
+        if (!hasPermission(createResource(schema), context, REVOKE, "DenySchemaPrivilege")) {
+            denyDenySchemaPrivilege(privilege.toString(), schema.toString());
         }
     }
 
     @Override
     public void checkCanRevokeSchemaPrivilege(SystemSecurityContext context, Privilege privilege, CatalogSchemaName schema, TrinoPrincipal revokee, boolean grantOption)
     {
-        if (!hasPermission(createResource(schema), context, RangerTrinoAccessType.REVOKE, "RevokeSchemaPrivilege")) {
-            AccessDeniedException.denyRevokeSchemaPrivilege(privilege.toString(), schema.toString());
+        if (!hasPermission(createResource(schema), context, REVOKE, "RevokeSchemaPrivilege")) {
+            denyRevokeSchemaPrivilege(privilege.toString(), schema.toString());
         }
     }
 
     @Override
     public void checkCanGrantTablePrivilege(SystemSecurityContext context, Privilege privilege, CatalogSchemaTableName table, TrinoPrincipal grantee, boolean withGrantOption)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.GRANT, "GrantTablePrivilege")) {
-            AccessDeniedException.denyGrantTablePrivilege(privilege.toString(), table.toString());
+        if (!hasPermission(createResource(table), context, GRANT, "GrantTablePrivilege")) {
+            denyGrantTablePrivilege(privilege.toString(), table.toString());
         }
     }
 
     @Override
     public void checkCanDenyTablePrivilege(SystemSecurityContext context, Privilege privilege, CatalogSchemaTableName table, TrinoPrincipal grantee)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.REVOKE, "DenyTablePrivilege")) {
-            AccessDeniedException.denyDenyTablePrivilege(privilege.toString(), table.toString());
+        if (!hasPermission(createResource(table), context, REVOKE, "DenyTablePrivilege")) {
+            denyDenyTablePrivilege(privilege.toString(), table.toString());
         }
     }
 
     @Override
     public void checkCanRevokeTablePrivilege(SystemSecurityContext context, Privilege privilege, CatalogSchemaTableName table, TrinoPrincipal revokee, boolean grantOptionFor)
     {
-        if (!hasPermission(createResource(table), context, RangerTrinoAccessType.REVOKE, "RevokeTablePrivilege")) {
-            AccessDeniedException.denyRevokeTablePrivilege(privilege.toString(), table.toString());
+        if (!hasPermission(createResource(table), context, REVOKE, "RevokeTablePrivilege")) {
+            denyRevokeTablePrivilege(privilege.toString(), table.toString());
         }
     }
 
     @Override
     public void checkCanGrantEntityPrivilege(SystemSecurityContext context, EntityPrivilege privilege, EntityKindAndName entity, TrinoPrincipal grantee, boolean grantOption)
     {
-        if (!hasPermission(createResource(entity), context, RangerTrinoAccessType.GRANT, "GrantEntityPrivilege")) {
-            AccessDeniedException.denyGrantEntityPrivilege(privilege.toString(), entity);
+        if (!hasPermission(createResource(entity), context, GRANT, "GrantEntityPrivilege")) {
+            denyGrantEntityPrivilege(privilege.toString(), entity);
         }
     }
 
     @Override
     public void checkCanDenyEntityPrivilege(SystemSecurityContext context, EntityPrivilege privilege, EntityKindAndName entity, TrinoPrincipal grantee)
     {
-        if (!hasPermission(createResource(entity), context, RangerTrinoAccessType.REVOKE, "DenyEntityPrivilege")) {
-            AccessDeniedException.denyDenyEntityPrivilege(privilege.toString(), entity);
+        if (!hasPermission(createResource(entity), context, REVOKE, "DenyEntityPrivilege")) {
+            denyDenyEntityPrivilege(privilege.toString(), entity);
         }
     }
 
     @Override
     public void checkCanRevokeEntityPrivilege(SystemSecurityContext context, EntityPrivilege privilege, EntityKindAndName entity, TrinoPrincipal revokee, boolean grantOption)
     {
-        if (!hasPermission(createResource(entity), context, RangerTrinoAccessType.REVOKE, "RevokeEntityPrivilege")) {
-            AccessDeniedException.denyRevokeEntityPrivilege(privilege.toString(), entity);
+        if (!hasPermission(createResource(entity), context, REVOKE, "RevokeEntityPrivilege")) {
+            denyRevokeEntityPrivilege(privilege.toString(), entity);
         }
     }
 
     @Override
     public void checkCanCreateRole(SystemSecurityContext context, String role, Optional<TrinoPrincipal> grantor)
     {
-        if (!hasPermission(createRoleResource(role), context, RangerTrinoAccessType.CREATE, "CreateRole")) {
-            AccessDeniedException.denyCreateRole(role);
+        if (!hasPermission(createRoleResource(role), context, CREATE, "CreateRole")) {
+            denyCreateRole(role);
         }
     }
 
     @Override
     public void checkCanDropRole(SystemSecurityContext context, String role)
     {
-        if (!hasPermission(createRoleResource(role), context, RangerTrinoAccessType.DROP, "DropRole")) {
-            AccessDeniedException.denyDropRole(role);
+        if (!hasPermission(createRoleResource(role), context, DROP, "DropRole")) {
+            denyDropRole(role);
         }
     }
 
     @Override
     public void checkCanShowRoles(SystemSecurityContext context)
     {
-        if (!hasPermission(createRoleResource("*"), context, RangerTrinoAccessType.SHOW, "ShowRoles")) {
-            AccessDeniedException.denyShowRoles();
+        if (!hasPermission(createRoleResource("*"), context, SHOW, "ShowRoles")) {
+            denyShowRoles();
         }
     }
 
     @Override
     public void checkCanGrantRoles(SystemSecurityContext context, Set<String> roles, Set<TrinoPrincipal> grantees, boolean adminOption, Optional<TrinoPrincipal> grantor)
     {
-        if (!hasPermission(createRoleResources(roles), context, RangerTrinoAccessType.GRANT, "GrantRoles")) {
-            AccessDeniedException.denyGrantRoles(roles, grantees);
+        if (!hasPermission(createRoleResources(roles), context, GRANT, "GrantRoles")) {
+            denyGrantRoles(roles, grantees);
         }
     }
 
     @Override
     public void checkCanRevokeRoles(SystemSecurityContext context, Set<String> roles, Set<TrinoPrincipal> grantees, boolean adminOption, Optional<TrinoPrincipal> grantor)
     {
-        if (!hasPermission(createRoleResources(roles), context, RangerTrinoAccessType.REVOKE, "RevokeRoles")) {
-            AccessDeniedException.denyRevokeRoles(roles, grantees);
+        if (!hasPermission(createRoleResources(roles), context, REVOKE, "RevokeRoles")) {
+            denyRevokeRoles(roles, grantees);
         }
     }
 
@@ -780,138 +803,133 @@ public class RangerSystemAccessControl
     @Override
     public void checkCanExecuteProcedure(SystemSecurityContext context, CatalogSchemaRoutineName procedure)
     {
-        if (!hasPermission(createProcedureResource(procedure), context, RangerTrinoAccessType.EXECUTE, "ExecuteProcedure")) {
-            AccessDeniedException.denyExecuteProcedure(procedure.getSchemaRoutineName().getRoutineName());
+        if (!hasPermission(createProcedureResource(procedure), context, EXECUTE, "ExecuteProcedure")) {
+            denyExecuteProcedure(procedure.getSchemaRoutineName().getRoutineName());
         }
     }
 
     @Override
     public void checkCanExecuteTableProcedure(SystemSecurityContext context, CatalogSchemaTableName catalogSchemaTableName, String procedure)
     {
-        if (!hasPermission(createResource(catalogSchemaTableName), context, RangerTrinoAccessType.ALTER, "ExecuteTableProcedure")) {
-            AccessDeniedException.denyExecuteTableProcedure(catalogSchemaTableName.toString(), procedure);
+        if (!hasPermission(createResource(catalogSchemaTableName), context, ALTER, "ExecuteTableProcedure")) {
+            denyExecuteTableProcedure(catalogSchemaTableName.toString(), procedure);
         }
     }
 
     @Override
     public void checkCanCreateFunction(SystemSecurityContext context, CatalogSchemaRoutineName functionName)
     {
-        if (!hasPermission(createResource(functionName), context, RangerTrinoAccessType.CREATE, "CreateFunction")) {
-            AccessDeniedException.denyCreateFunction(functionName.toString());
+        if (!hasPermission(createResource(functionName), context, CREATE, "CreateFunction")) {
+            denyCreateFunction(functionName.toString());
         }
     }
 
     @Override
     public void checkCanDropFunction(SystemSecurityContext context, CatalogSchemaRoutineName functionName)
     {
-        if (!hasPermission(createResource(functionName), context, RangerTrinoAccessType.DROP, "DropFunction")) {
-            AccessDeniedException.denyDropFunction(functionName.toString());
+        if (!hasPermission(createResource(functionName), context, DROP, "DropFunction")) {
+            denyDropFunction(functionName.toString());
         }
     }
 
     @Override
     public void checkCanShowCreateFunction(SystemSecurityContext context, CatalogSchemaRoutineName functionName)
     {
-        if (!hasPermission(createResource(functionName), context, RangerTrinoAccessType.SHOW, "ShowCreateFunction")) {
-            AccessDeniedException.denyShowCreateFunction(functionName.toString());
+        if (!hasPermission(createResource(functionName), context, SHOW, "ShowCreateFunction")) {
+            denyShowCreateFunction(functionName.toString());
         }
     }
 
     @Override
     public void checkCanShowFunctions(SystemSecurityContext context, CatalogSchemaName schema)
     {
-        if (!hasPermission(createResource(schema), context, RangerTrinoAccessType.SHOW, "ShowFunctions")) {
-            AccessDeniedException.denyShowFunctions(schema.toString());
+        if (!hasPermission(createResource(schema), context, SHOW, "ShowFunctions")) {
+            denyShowFunctions(schema.toString());
         }
     }
 
     @Override
     public boolean canExecuteFunction(SystemSecurityContext context, CatalogSchemaRoutineName functionName)
     {
-        return hasPermission(createResource(functionName), context, RangerTrinoAccessType.EXECUTE, "ExecuteFunction");
+        return hasPermission(createResource(functionName), context, EXECUTE, "ExecuteFunction");
     }
 
     @Override
     public boolean canCreateViewWithExecuteFunction(SystemSecurityContext context, CatalogSchemaRoutineName functionName)
     {
-        return hasPermission(createResource(functionName), context, RangerTrinoAccessType.CREATE, "CreateViewWithExecuteFunction");
+        return hasPermission(createResource(functionName), context, CREATE, "CreateViewWithExecuteFunction");
     }
 
     @Override
     public Set<SchemaFunctionName> filterFunctions(SystemSecurityContext context, String catalogName, Set<SchemaFunctionName> functionNames)
     {
-        Set<SchemaFunctionName> toExclude = null;
+        Set<SchemaFunctionName> toExclude = new HashSet<>();
 
         for (SchemaFunctionName functionName : functionNames) {
             RangerTrinoResource res = createResource(catalogName, functionName);
 
-            if (!hasPermissionForFilter(res, context, RangerTrinoAccessType._ANY, "filterFunctions")) {
+            if (!hasPermissionForFilter(res, context, _ANY, "filterFunctions")) {
                 LOG.debug("filterFunctions(user={}): skipping function {}.{}.{}", context.getIdentity(), catalogName, functionName.getSchemaName(), functionName.getFunctionName());
-
-                if (toExclude == null) {
-                    toExclude = new HashSet<>();
-                }
 
                 toExclude.add(functionName);
             }
         }
 
-        return toExclude == null ? functionNames : functionNames.stream().filter(((Predicate<? super SchemaFunctionName>) toExclude::contains).negate()).collect(Collectors.toSet());
+        return toExclude.isEmpty() ? functionNames : functionNames.stream().filter(((Predicate<? super SchemaFunctionName>) toExclude::contains).negate()).collect(Collectors.toSet());
     }
 
     @Override
     public List<ViewExpression> getRowFilters(SystemSecurityContext context, CatalogSchemaTableName tableName)
     {
-        RangerAccessResult result = getRowFilterResult(createAccessRequest(createResource(tableName), context, RangerTrinoAccessType.SELECT, "getRowFilters"));
-        ViewExpression viewExpression = null;
+        RangerAccessResult result = getRowFilterResult(createAccessRequest(createResource(tableName), context, SELECT, "getRowFilters"));
 
-        if (isRowFilterEnabled(result)) {
-            String filter = result.getFilterExpr();
-
-            viewExpression = ViewExpression.builder().identity(context.getIdentity().getUser())
-                    .catalog(tableName.getCatalogName())
-                    .schema(tableName.getSchemaTableName().getSchemaName())
-                    .expression(filter).build();
+        if (!isRowFilterEnabled(result)) {
+            return Collections.emptyList();
         }
 
-        return Optional.ofNullable(viewExpression).map(ImmutableList::of).orElseGet(ImmutableList::of);
+        String filter = result.getFilterExpr();
+        ViewExpression viewExpression = ViewExpression.builder().identity(context.getIdentity().getUser())
+                .catalog(tableName.getCatalogName())
+                .schema(tableName.getSchemaTableName().getSchemaName())
+                .expression(filter).build();
+
+        return Collections.singletonList(viewExpression);
     }
 
     @Override
     public Optional<ViewExpression> getColumnMask(SystemSecurityContext context, CatalogSchemaTableName tableName, String columnName, Type type)
     {
-        RangerAccessResult result = getDataMaskResult(createAccessRequest(createResource(tableName.getCatalogName(), tableName.getSchemaTableName().getSchemaName(), tableName.getSchemaTableName().getTableName(), columnName), context, RangerTrinoAccessType.SELECT, "getColumnMask"));
-        ViewExpression viewExpression = null;
+        RangerAccessResult result = getDataMaskResult(createAccessRequest(createResource(tableName.getCatalogName(), tableName.getSchemaTableName().getSchemaName(), tableName.getSchemaTableName().getTableName(), columnName), context, SELECT, "getColumnMask"));
 
-        if (isDataMaskEnabled(result)) {
-            String maskType = result.getMaskType();
-            RangerServiceDef.RangerDataMaskTypeDef maskTypeDef = result.getMaskTypeDef();
-            String transformer = null;
-
-            if (maskTypeDef != null) {
-                transformer = maskTypeDef.getTransformer();
-            }
-
-            if (StringUtils.equalsIgnoreCase(maskType, RangerPolicy.MASK_TYPE_NULL)) {
-                transformer = "NULL";
-            }
-            else if (StringUtils.equalsIgnoreCase(maskType, RangerPolicy.MASK_TYPE_CUSTOM)) {
-                String maskedValue = result.getMaskedValue();
-
-                transformer = requireNonNullElse(maskedValue, "NULL");
-            }
-
-            if (StringUtils.isNotEmpty(transformer)) {
-                transformer = transformer.replace("{col}", columnName).replace("{type}", type.getDisplayName());
-            }
-
-            viewExpression = ViewExpression.builder().identity(context.getIdentity().getUser())
-                    .catalog(tableName.getCatalogName())
-                    .schema(tableName.getSchemaTableName().getSchemaName())
-                    .expression(transformer).build();
+        if (!isDataMaskEnabled(result)) {
+            return Optional.empty();
         }
 
-        return Optional.ofNullable(viewExpression);
+        String maskType = result.getMaskType();
+        RangerServiceDef.RangerDataMaskTypeDef maskTypeDef = result.getMaskTypeDef();
+        String transformer = null;
+
+        if (maskTypeDef != null) {
+            transformer = maskTypeDef.getTransformer();
+        }
+
+        if (StringUtils.equalsIgnoreCase(maskType, RangerPolicy.MASK_TYPE_NULL)) {
+            transformer = "NULL";
+        }
+        else if (StringUtils.equalsIgnoreCase(maskType, RangerPolicy.MASK_TYPE_CUSTOM)) {
+            String maskedValue = result.getMaskedValue();
+
+            transformer = requireNonNullElse(maskedValue, "NULL");
+        }
+
+        if (StringUtils.isNotEmpty(transformer)) {
+            transformer = transformer.replace("{col}", columnName).replace("{type}", type.getDisplayName());
+        }
+
+        return Optional.ofNullable(ViewExpression.builder().identity(context.getIdentity().getUser())
+                                           .catalog(tableName.getCatalogName())
+                                           .schema(tableName.getSchemaTableName().getSchemaName())
+                                           .expression(transformer).build());
     }
 
     @Override
